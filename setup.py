@@ -10,11 +10,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="example-pkg-YOUR-USERNAME-HERE", # Replace with your own username
+    name="i2cylib", # Replace with your own username
     version="1.0.0",
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
-    description="A small example package",
+    description="A Python library contains a lot of useful functions and tools",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/i2cy/i2cylib",

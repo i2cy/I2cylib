@@ -7,7 +7,7 @@
 name = "i2cylib"
 description = "This is a universal package contains a lot of useful functions and tools written by I2cy."
 
-from .logger import *
+from i2cylib.utils.logger import *
 from .crypto import *
 from .database import *
 from .utils import *
