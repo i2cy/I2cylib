@@ -5,3 +5,9 @@
  - `ICFat64` 类FAT虚拟文件系统
  - `I2TCP_protocol` 一般的用户层通讯协议
  - `utils` 各种常用的小工具
+
+# 安装方法
+`pip install i2cylib`
+
+# 环境需求
+`Python3.6+`
