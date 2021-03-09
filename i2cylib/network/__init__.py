@@ -4,4 +4,4 @@
 # Filename: __init__.py
 # Created on: 2021/3/6
 
-from .I2TCP_protocol import *
+import i2cylib.network.I2TCP_protocol
