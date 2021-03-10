@@ -190,35 +190,65 @@ class SqliteTableCursor:
         cursor.close()
 
     def get(self, key=None, column_name="*", primary_index_column=None,
-            orderby="", asc_order=True):
+            orderby=None, asc_order=True):
         cursor = self.upper.database.cursor()
 
         if asc_order:
             order = "ASC"
         else:
             order = "DESC"
-        if orderby == "":
-            orderby = self.table_info[0]["name"]
+
+        if primary_index_column is None and not key is None:
+            primary_key = None
+            for ele in self.table_info:
+                if ele["is_primary_key"]:
+                    primary_key = ele["name"]
+                    break
+            if primary_key is None:
+                cursor.close()
+                raise KeyError("no primary key defined in table,"
+                               " input primary_index_column manually")
+            primary_index_column = primary_key
+
+        if orderby is None:
+            if primary_index_column is None:
+                orderby = self.table_info[0]["name"]
+            else:
+                orderby = primary_index_column
 
         if key is None:
-            key = "*"
-            cmd = "SELECT {} from {} ORDER BY {} {}".format(key,
+            cmd = "SELECT {} from {} ORDER BY {} {}".format(column_name,
                                                             self.name,
                                                             orderby,
                                                             order
                                                             )
+
+        elif isinstance(key, tuple):
+            if len(key) != 2:
+                raise Exception("range indexes must be 2 different elements")
+            cmd = "SELECT {} FROM {} WHERE {} BETWEEN {} AND {} ORDER BY {} {}".format(column_name,
+                                                                                       self.name,
+                                                                                       primary_index_column,
+                                                                                       key[0],
+                                                                                       key[1],
+                                                                                       orderby,
+                                                                                       order)
+
+        elif isinstance(key, list):
+            if len(key) < 1:
+                raise Exception("index list length must not be empty")
+            indexs_str = ""
+            for ele in key:
+                indexs_str += "{}, ".format(self._data2sqlstr(ele))
+            indexs_str = indexs_str[:-2]
+            cmd = "SELECT {} FROM {} WHERE {} IN ({}) ORDER BY {} {}".format(column_name,
+                                                                             self.name,
+                                                                             primary_index_column,
+                                                                             indexs_str,
+                                                                             orderby,
+                                                                             order)
+
         else:
-            if primary_index_column is None:
-                primary_key = None
-                for ele in self.table_info:
-                    if ele["is_primary_key"]:
-                        primary_key = ele["name"]
-                        break
-                if primary_key is None:
-                    cursor.close()
-                    raise KeyError("no primary key defined in table,"
-                                   " input primary_index_column manually")
-                primary_index_column = primary_key
             key = self._data2sqlstr(key)
             cmd = "SELECT {} FROM {} WHERE {}={} ORDER BY {} {}".format(column_name,
                                                                         self.name,
