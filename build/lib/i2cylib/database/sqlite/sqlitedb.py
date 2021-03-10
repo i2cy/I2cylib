@@ -164,6 +164,15 @@ class SqliteTableCursor:
         self.upper._auto_commit()
         cursor.close()
 
+    def empty(self):  # delete all values in table
+        cursor = self.upper.database.cursor()
+
+        cmd = "DELETE FROM {}".format(self.name)
+
+        cursor.execute(cmd)
+        self.upper._auto_commit()
+        cursor.close()
+
     # index_name can be automatically set as the primary key in table.
     # Or you can define it as it follows the SQLite3 WHERE logic
     def pop(self, key, primary_index_column=None):
@@ -190,35 +199,67 @@ class SqliteTableCursor:
         cursor.close()
 
     def get(self, key=None, column_name="*", primary_index_column=None,
-            orderby="", asc_order=True):
+            orderby=None, asc_order=True):
         cursor = self.upper.database.cursor()
 
         if asc_order:
             order = "ASC"
         else:
             order = "DESC"
-        if orderby == "":
-            orderby = self.table_info[0]["name"]
+
+        if primary_index_column is None and not key is None:
+            primary_key = None
+            for ele in self.table_info:
+                if ele["is_primary_key"]:
+                    primary_key = ele["name"]
+                    break
+            if primary_key is None:
+                cursor.close()
+                raise KeyError("no primary key defined in table,"
+                               " input primary_index_column manually")
+            primary_index_column = primary_key
+
+        if orderby is None:
+            if primary_index_column is None:
+                orderby = self.table_info[0]["name"]
+            else:
+                orderby = primary_index_column
 
         if key is None:
-            key = "*"
-            cmd = "SELECT {} from {} ORDER BY {} {}".format(key,
+            cmd = "SELECT {} from {} ORDER BY {} {}".format(column_name,
                                                             self.name,
                                                             orderby,
                                                             order
                                                             )
+
+        elif isinstance(key, tuple):
+            if len(key) != 2:
+                cursor.close()
+                raise KeyError("index range tuple must have 2 elements")
+            cmd = "SELECT {} from {} WHERE {} BETWEEN {} AND {} ORDER BY {} {}".format(column_name,
+                                                                                       self.name,
+                                                                                       primary_index_column,
+                                                                                       self._data2sqlstr(key[0]),
+                                                                                       self._data2sqlstr(key[1]),
+                                                                                       orderby,
+                                                                                       order)
+
+        elif isinstance(key, list):
+            if len(key) < 1:
+                cursor.close()
+                raise KeyError("index element list must have at least 1 element")
+            key_str = ""
+            for ele in key:
+                key_str += "{}, ".format(self._data2sqlstr(ele))
+            key_str = key_str[:-2]
+            cmd = "SELECT {} from {} WHERE {} IN ({}) ORDER BY {} {}".format(column_name,
+                                                                             self.name,
+                                                                             primary_index_column,
+                                                                             key_str,
+                                                                             orderby,
+                                                                             order)
+
         else:
-            if primary_index_column is None:
-                primary_key = None
-                for ele in self.table_info:
-                    if ele["is_primary_key"]:
-                        primary_key = ele["name"]
-                        break
-                if primary_key is None:
-                    cursor.close()
-                    raise KeyError("no primary key defined in table,"
-                                   " input primary_index_column manually")
-                primary_index_column = primary_key
             key = self._data2sqlstr(key)
             cmd = "SELECT {} FROM {} WHERE {}={} ORDER BY {} {}".format(column_name,
                                                                         self.name,
@@ -227,6 +268,7 @@ class SqliteTableCursor:
                                                                         orderby,
                                                                         order
                                                                         )
+
         cursor.execute(cmd)
         ret = cursor.fetchall()
         cursor.close()
@@ -278,7 +320,6 @@ class SqliteTableCursor:
         cursor.execute(cmd)
         self.upper._auto_commit()
         cursor.close()
-
 
 
 class SqlTable(object):
@@ -336,10 +377,9 @@ class SqlTable(object):
 
 
 class Sqlimit(object):
-
-    NOT_NULL    = "NOT NULL"
-    DEFAULT     = "DEFAULT"
-    UNIQUE      = "UNIQUE"
+    NOT_NULL = "NOT NULL"
+    DEFAULT = "DEFAULT"
+    UNIQUE = "UNIQUE"
     PRIMARY_KEY = "PRIMARY KEY"
 
     def CHECK(sentence):
@@ -348,43 +388,77 @@ class Sqlimit(object):
 
 
 class SqlDtype(object):
-
-    NULL    = "NULL"
-    TEXT    = "TEXT"
+    NULL = "NULL"
+    TEXT = "TEXT"
     INTEGER = "INTEGER"
-    REAL    = "REAL"
-    BLOB    = "BLOB"
+    REAL = "REAL"
+    BLOB = "BLOB"
 
 
 def test():
-    import random
+    import random, os
+    create = False
+    if not os.path.exists("test.db"):
+        create = True
     t = SqliteDB("test.db")
     t.connect()
     tables = t.list_all_tables()
     print("Tables in DB:\n{}".format(tables))
+    if create:
+        print("creating table COMPANY")
+        tb = SqlTable("COMPANY")
+        tb.add_column("ID", SqlDtype.INTEGER)
+        tb.add_column("name", SqlDtype.TEXT)
+        tb.add_column("index_1", SqlDtype.REAL)
+        tb.add_column("is_adult", SqlDtype.INTEGER)
+        tb.add_limit(0, Sqlimit.PRIMARY_KEY)
+        tb.add_limit(1, Sqlimit.NOT_NULL)
+        tb.add_limit(2, Sqlimit.NOT_NULL)
+        tb.add_limit(3, Sqlimit.NOT_NULL)
+        t.create_table(tb)
+    print("selecting table COMPANY")
     tc = t.select_table("company")
-    tc.pop(4)
+    print("erasing all data in table")
+    tc.empty()
     data = tc.get()
     print("1. data in COMPANY:\n{}".format(data))
-    tc.append([4, "Icy", 20])
+    print("appending data to table COMPANY")
+    tc.append([1, "Icy", 0.03, True])
+    tc.append([2, "Cody", 0.38, True])
+    tc.append([3, "Aurora", 0.76, True])
+    tc.append([4, "RSauce", 0.96, True])
+    tc.append([5, "Zero", 0.00, True])
+    tc.append([6, "Ash", 0.99, True])
     data = tc.get()
+    print("committing changes")
     t.commit()
     print("2. data in COMPANY:\n{}".format(data))
-    tc.pop(4)
+    print("deleting data with ID 6 from table COMPANY")
+    tc.pop(6)
     data = tc.get()
     print("3. data in COMPANY:\n{}".format(data))
+    print("reconnecting database")
     t.close()
     t.connect()
+    print("autocommit mode on")
     t.switch_autocommit()
     tc = t.select_table("company")
+    print("deleting data with ID 4 from table COMPANY")
     tc.pop(4)
-    tc.append([4, "Icy", 20])
+    print("appending data to table COMPANY")
+    tc.append([4, "RSauce", 0.66, True])
     data = tc.get()
     print("4. data in COMPANY:\n{}".format(data))
-    tc.update(random.randint(18,30), 4, "AGE")
+    print("updating data in table COMPANY")
+    tc.update(1 / random.randint(18, 30), 4, "index_1")
     data = tc.get()
     print("5. data in COMPANY:\n{}".format(data))
-    tc.pop(4)
+    data = tc.get((1, 4))
+    print("6. data within ID between 1 and 4 in COMPANY:\n{}".format(data))
+    data = tc.get((3, 5))
+    print("7. data within ID between 3 and 5 in COMPANY:\n{}".format(data))
+    data = tc.get([1, 3, 5])
+    print("8. data within ID 1, 3, 5 in COMPANY:\n{}".format(data))
 
 
 if __name__ == '__main__':
