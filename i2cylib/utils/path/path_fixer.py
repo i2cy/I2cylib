@@ -8,8 +8,11 @@ import os
 
 def path_fixer(path): # path checker
     chk = ""
+    ret = False
     for i in path:
         chk += i
         if i in ("/", "\\"):
             if not os.path.exists(chk):
                 os.mkdir(chk)
+                ret = True
+    return ret
