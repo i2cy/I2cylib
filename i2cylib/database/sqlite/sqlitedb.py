@@ -108,6 +108,13 @@ class SqliteTableCursor:
         self.table_info = None
         self.get_table_info()
 
+    def __len__(self):
+        cursor = self.upper.database.cursor()
+        cmd = "SELECT COUNT(*) FROM {}".format(self.name)
+        cursor.execute(cmd)
+        data = cursor.fetchall()
+        return data[0][0]
+
     def _data2sqlstr(self, data):
         key = None
         if isinstance(data, int):
@@ -459,6 +466,7 @@ def test():
     print("7. data within ID between 3 and 5 in COMPANY:\n{}".format(data))
     data = tc.get([1, 3, 5])
     print("8. data within ID 1, 3, 5 in COMPANY:\n{}".format(data))
+    print("table length: {}".format(len(tc)))
 
 
 if __name__ == '__main__':
