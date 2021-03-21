@@ -18,10 +18,22 @@ class SqliteDB:
 
         self.autocommit = False
 
+        self.cursors = []
+
     def _connection_check(self):
         if self.database is None:
             raise Exception("connection has not been built yet, "
                             "you have to connect to a database first")
+
+    def _undo_cursors(self):
+        valids = []
+        for ele in self.cursors:
+            try:
+                ele.undo()
+                valids.append(ele)
+            except:
+                pass
+        self.cursors = valids
 
     def _auto_commit(self):
         if self.autocommit:
@@ -88,6 +100,7 @@ class SqliteDB:
         if self.autocommit:
             raise Exception("cannot undo since the autocommit mode is on")
         self.database.rollback()
+        self._undo_cursors()
 
     def commit(self):
         self._connection_check()
@@ -106,14 +119,22 @@ class SqliteTableCursor:
         self.upper = upper
         self.name = table_name
         self.table_info = None
+        self.length = 0
         self.get_table_info()
 
     def __len__(self):
-        cursor = self.upper.database.cursor()
-        cmd = "SELECT COUNT(*) FROM {}".format(self.name)
-        cursor.execute(cmd)
-        data = cursor.fetchall()
-        return data[0][0]
+        if self.length is None:
+            cursor = self.upper.database.cursor()
+            cmd = "SELECT COUNT(*) FROM {}".format(self.name)
+            cursor.execute(cmd)
+            data = cursor.fetchall()
+            self.length = data[0][0]
+        return self.length
+
+    def undo(self):
+        if self.upper.autocommit:
+            raise Exception("cannot undo since the autocommit mode is on")
+        self.length = None
 
     def _data2sqlstr(self, data):
         key = None
@@ -170,6 +191,7 @@ class SqliteTableCursor:
         cursor.execute(cmd)
         self.upper._auto_commit()
         cursor.close()
+        self.length += 1
 
     def empty(self):  # delete all values in table
         cursor = self.upper.database.cursor()
