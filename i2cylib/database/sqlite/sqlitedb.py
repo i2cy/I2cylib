@@ -4,7 +4,7 @@
 # Filename: sqlitedb
 # Created on: 2021/2/16
 # Description: A pythonfied sqlite3 database control api class
-##VERSION: 1.0
+##VERSION: 1.1
 
 
 import sqlite3
@@ -121,15 +121,121 @@ class SqliteTableCursor:
         self.table_info = None
         self.length = 0
         self.get_table_info()
+        self.cursor = self.upper.database.cursor()
+        self.offset = 0
 
     def __len__(self):
-        if self.length is None:
-            cursor = self.upper.database.cursor()
-            cmd = "SELECT COUNT(*) FROM {}".format(self.name)
-            cursor.execute(cmd)
-            data = cursor.fetchall()
-            self.length = data[0][0]
+        cursor = self.upper.database.cursor()
+        cmd = "SELECT COUNT(*) FROM {}".format(self.name)
+        cursor.execute(cmd)
+        data = cursor.fetchall()
+        self.length = int(data[0][0])
+        cursor.close()
         return self.length
+
+    def __iter__(self):
+        self.cursor.execute("SELECT * FROM {}".format(self.name))
+        if self.offset > 0:
+            self.cursor.fetchmany(self.offset)
+
+        return self
+
+    def __next__(self):
+        ret = self.cursor.fetchone()
+        if ret is None:
+            raise StopIteration
+        self.offset += 1
+        return ret
+
+    def __getitem__(self, item):
+        valid = isinstance(item, int) or isinstance(item, slice)
+        if not valid:
+            raise KeyError("index must be integrate or slices")
+
+        length = len(self)
+        step = None
+        stop = -1
+
+        if isinstance(item, slice):
+            offset = item.start
+            if offset is None:
+                offset = 0
+            step = item.step
+            if step is None:
+                step = 1
+            stop = item.stop
+            if stop is None:
+                stop = length
+            if stop < 0:
+                stop = length + stop + 1
+        else:
+            offset = item
+
+        if offset < 0:
+            offset = length + offset
+
+        if offset >= length or stop > length:
+            raise KeyError("index out of range")
+
+        cursor = self.upper.database.cursor()
+
+        cursor.execute("SELECT * FROM {}".format(self.name))
+
+        if offset > 0:
+            cursor.fetchmany(offset)
+
+        if isinstance(item, slice):
+            ret = []
+            for i in range(stop - offset):
+                t = cursor.fetchone()
+                ret.append(t)
+            ret = ret[::step]
+
+        else:
+            ret = cursor.fetchone()
+
+        cursor.close()
+
+        return ret
+
+    def __setitem__(self, key, value):
+        if not isinstance(key, int):
+            raise KeyError("index must be integrate")
+
+        primary_key = None
+        for index, ele in enumerate(self.table_info):
+            if ele["is_primary_key"]:
+                primary_key = ele["name"]
+                break
+        if primary_key is None:
+            raise KeyError("no primary key defined in table,"
+                           " invalid operation.")
+
+        length = len(self)
+        offset = key
+
+        if offset < 0:
+            offset = length + offset
+
+        if offset >= length:
+            raise KeyError("index out of range")
+
+        cursor = self.upper.database.cursor()
+
+        cursor.execute("SELECT {} FROM {}".format(primary_key, self.name))
+        if offset > 0:
+            cursor.fetchmany(offset)
+
+        target = cursor.fetchone()[0]
+        cursor.close()
+
+        self.update(data=value, index_key=target)
+
+    def seek(self, offset):
+        cursor = self.upper.database.cursor()
+        if offset < 0:
+            offset = len(self) + offset
+        self.offset = offset
 
     def undo(self):
         if self.upper.autocommit:
@@ -317,7 +423,9 @@ class SqliteTableCursor:
         if not isinstance(column_names, list):
             column_names = [column_names]
 
-        if not isinstance(data, list):
+        valid = isinstance(data, list) or isinstance(data, tuple)
+
+        if not valid:
             data = [data]
 
         if len(data) == 0:
@@ -454,8 +562,8 @@ def test():
     print("appending data to table COMPANY")
     tc.append([1, "Icy", 0.03, True])
     tc.append([2, "Cody", 0.38, True])
-    tc.append([3, "Aurora", 0.76, True])
     tc.append([4, "RSauce", 0.96, True])
+    tc.append([3, "Aurora", 0.76, True])
     tc.append([5, "Zero", 0.00, True])
     tc.append([6, "Ash", 0.99, True])
     data = tc.get()
@@ -489,6 +597,29 @@ def test():
     data = tc.get([1, 3, 5])
     print("8. data within ID 1, 3, 5 in COMPANY:\n{}".format(data))
     print("table length: {}".format(len(tc)))
+    print("iteration test:")
+    for ele in tc:
+        print(ele)
+    print("iteration test with seek(2):")
+    tc.seek(2)
+    for ele in tc:
+        print(ele)
+    print("get item test:")
+    for i in range(len(tc)):
+        print(tc[i])
+        print(tc[-i-1])
+    print("get item test[2:4]:")
+    print(tc[2:4])
+    print("get item test[2:-1]:")
+    print(tc[2:-1])
+    print("get item test[0:3:2]:")
+    print(tc[0:3:2])
+    print("get item test[::-1]:")
+    print(tc[::-1])
+    print("set item test:")
+    for i in range(len(tc)):
+        tc[i] = (i, 'Cody', 1 / random.randint(18, 30), 1)
+        print(tc[i])
 
 
 if __name__ == '__main__':
