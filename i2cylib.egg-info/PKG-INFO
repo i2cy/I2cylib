@@ -1,0 +1,28 @@
+Metadata-Version: 2.1
+Name: i2cylib
+Version: 1.0.8
+Summary: A Python library contains a lot of useful functions and tools
+Home-page: https://github.com/i2cy/i2cylib
+Author: I2cy Cloud
+Author-email: i2cy@outlook.com
+License: UNKNOWN
+Project-URL: Bug Tracker, https://github.com/i2cy/i2cylib/issues
+Description: # 主要包含
+         - `ICCode` i2cy常用的混淆算法
+         - `Dynkey` 动态验证密匙生成/验证工具
+         - `SQLiteDB` SQLite3数据库面向对象式API
+         - `ICFat64` 类FAT虚拟文件系统
+         - `I2TCP_protocol` 一般的用户层通讯协议
+         - `utils` 各种常用的小工具
+        
+        # 安装方法
+        `pip install i2cylib`
+        
+        # 环境需求
+        `Python3.6+`
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
