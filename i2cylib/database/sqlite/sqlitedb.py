@@ -167,7 +167,7 @@ class SqliteTableCursor:
             if stop is None:
                 stop = length
             if stop < 0:
-                stop = length + stop + 1
+                stop = length + stop
         else:
             offset = item
 
@@ -612,6 +612,12 @@ def test():
     print(tc[2:4])
     print("get item test[2:-1]:")
     print(tc[2:-1])
+    print("get item test[:-1]:")
+    print(tc[:-1])
+    print("get item test[2:]:")
+    print(tc[2:])
+    print("get item test[-3:]:")
+    print(tc[-3:])
     print("get item test[0:3:2]:")
     print(tc[0:3:2])
     print("get item test[::-1]:")
