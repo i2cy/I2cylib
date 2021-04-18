@@ -30,6 +30,8 @@ i2cylib/utils/args/get_args.py
 i2cylib/utils/bytes/__init__.py
 i2cylib/utils/bytes/data_transform.py
 i2cylib/utils/bytes/random_bytesgen.py
+i2cylib/utils/delay/__init__.py
+i2cylib/utils/delay/normal_delay.py
 i2cylib/utils/files/__init__.py
 i2cylib/utils/files/hash_file.py
 i2cylib/utils/files/import_scripts.py
@@ -42,6 +44,8 @@ i2cylib/utils/path/__init__.py
 i2cylib/utils/path/path_fixer.py
 i2cylib/utils/path/read_path.py
 i2cylib/utils/path/scan_path.py
+i2cylib/utils/stdout/__init__.py
+i2cylib/utils/stdout/echo.py
 i2cylib/utils/string/__init__.py
 i2cylib/utils/string/text_match.py
 i2cylib/utils/time/__init__.py
