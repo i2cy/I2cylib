@@ -11,3 +11,5 @@ from .os import *
 from .path import *
 from .string import *
 from .time import *
+from .delay import *
+from .stdout import *
