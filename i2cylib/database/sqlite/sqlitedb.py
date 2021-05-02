@@ -179,19 +179,15 @@ class SqliteTableCursor:
 
         cursor = self.upper.database.cursor()
 
-        cursor.execute("SELECT * FROM {}".format(self.name))
-
-        if offset > 0:
-            cursor.fetchmany(offset)
-
         if isinstance(item, slice):
-            ret = []
-            for i in range(stop - offset):
-                t = cursor.fetchone()
-                ret.append(t)
+            cursor.execute("SELECT * FROM {} LIMIT {} OFFSET {}".format(self.name,
+                                                                        stop - offset,
+                                                                        offset))
+            ret = cursor.fetchall()
             ret = ret[::step]
 
         else:
+            cursor.execute("SELECT * FROM {} LIMIT 1 OFFSET {}".format(self.name, offset))
             ret = cursor.fetchone()
 
         cursor.close()
