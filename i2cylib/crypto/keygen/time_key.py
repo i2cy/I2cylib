@@ -8,7 +8,7 @@
 
 import time
 
-class timeKey: # 64-Bits Live key generator/matcher
+class TimeKey: # 64-Bits Live key generator/matcher
     def __init__(self,key):
         if type(key) != type(""):
             raise Exception("key must be a string")

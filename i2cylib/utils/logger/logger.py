@@ -10,7 +10,7 @@ import time
 import sys
 
 
-class logger: # Logger
+class Logger: # Logger
     def __init__(self, filename=None, line_end="lf",
                  date_format="%Y-%m-%d %H:%M:%S", level="DEBUG", echo=True):
         self.level = 1

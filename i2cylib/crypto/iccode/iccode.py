@@ -5,7 +5,7 @@
 # Description: Encode the data or decode the data with a key
 ##VERSION: 2.2
 
-class iccode: # Simple Data Encoder/Decoder
+class Iccode: # Simple Data Encoder/Decoder
     def __init__(self,base_key): # base_key must be bytes
         if len(base_key) <= 1:
             raise Exception("'base_key' length must be greater than 1")

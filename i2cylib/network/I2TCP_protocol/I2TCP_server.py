@@ -599,11 +599,18 @@ class I2TCPhandler:
 
         return sent
 
-    def recv(self):
+    def recv(self, timeout=0):
         ret = None
-        if len(self.package_buffer) > 0:
-            got = self.package_buffer.pop(0)
-            ret = got
+        t = time.time()
+        while True:
+            if len(self.package_buffer) > 0:
+                got = self.package_buffer.pop(0)
+                ret = got
+                break
+            if timeout == 0 or (time.time() - t) > timeout:
+                break
+
+            time.sleep(0.02)
 
         return ret
 

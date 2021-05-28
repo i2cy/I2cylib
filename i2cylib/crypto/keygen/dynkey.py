@@ -9,7 +9,7 @@
 import time
 from hashlib import md5
 
-class dynKey: # 64-Bits dynamic key generator/matcher
+class DynKey: # 64-Bits dynamic key generator/matcher
 
     def __init__(self, key, flush_times=1, multiplier=0.01):
         if isinstance(key, str):

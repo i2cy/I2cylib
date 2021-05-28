@@ -7,7 +7,7 @@
 
 import os, random, time
 
-class icfat: # ICFAT virtual filesystem API (Version: 0.0.1)
+class IcFAT: # ICFAT virtual filesystem API (Version: 0.0.1)
     def __init__(self,filename):
         self.version = b"\x00\x00\x01"
         self.space_total = 0

@@ -4,7 +4,7 @@
 # Name: Shell Argument(s) Decoder
 # Description: This function can get the argument(s) from the string
 
-def get_args(opt): # decode command shell's argument(s)
+def decode_args(opt): # decode command shell's argument(s)
     opts = []
     strin = False
     temp = ""
