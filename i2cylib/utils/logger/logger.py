@@ -55,7 +55,7 @@ class Logger: # Logger
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
-            return
+            return infos
         log_file = open(self.filename,"a")
         log_file.write(infos)
         log_file.close()
@@ -68,7 +68,7 @@ class Logger: # Logger
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
-            return
+            return infos
         log_file = open(self.filename,"a")
         log_file.write(infos)
         log_file.close()
@@ -81,7 +81,7 @@ class Logger: # Logger
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
-            return
+            return infos
         log_file = open(self.filename,"a")
         log_file.write(infos)
         log_file.close()
@@ -94,7 +94,7 @@ class Logger: # Logger
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
-            return
+            return infos
         log_file = open(self.filename,"a")
         log_file.write(infos)
         log_file.close()
@@ -105,7 +105,7 @@ class Logger: # Logger
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
-            return
+            return infos
         log_file = open(self.filename,"a")
         log_file.write(infos)
         log_file.close()
