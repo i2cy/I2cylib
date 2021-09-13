@@ -6,6 +6,7 @@ i2cylib/__init__.py
 i2cylib.egg-info/PKG-INFO
 i2cylib.egg-info/SOURCES.txt
 i2cylib.egg-info/dependency_links.txt
+i2cylib.egg-info/entry_points.txt
 i2cylib.egg-info/top_level.txt
 i2cylib/crypto/__init__.py
 i2cylib/crypto/iccode/__init__.py
@@ -14,6 +15,9 @@ i2cylib/crypto/keygen/__init__.py
 i2cylib/crypto/keygen/dynkey.py
 i2cylib/crypto/keygen/time_key.py
 i2cylib/database/__init__.py
+i2cylib/database/I2DB/__init__.py
+i2cylib/database/I2DB/i2cydbclient.py
+i2cylib/database/I2DB/i2cydbserver.py
 i2cylib/database/sqlite/__init__.py
 i2cylib/database/sqlite/sqlitedb.py
 i2cylib/filesystem/__init__.py

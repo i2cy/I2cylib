@@ -194,6 +194,16 @@ class dynKey: # 64-Bits dynamic key generator/matcher
 class I2TCPserver:
 
     def __init__(self, key="basic", port=27631, max_con=20, logger=logger()):
+        """
+        I2TCP server class
+
+        :param key: str, dynamic key for authentication
+        :param port: int, server port that to be bond
+        :param max_con: int, max TCP connection(s) that allowed
+                        to be accept at the same time
+        :param logger: Logger, server log output object
+        """
+
         self.port = port
         self.srv = None
         self.keygen = dynKey(key)
@@ -210,6 +220,14 @@ class I2TCPserver:
         self.live = False
 
     def _watchdog_thread(self):
+        """
+        watchdog service, kills connection during server
+         shutting down, and removes dead connection in
+         buffer
+
+        :return: None
+        """
+
         self.threads.update({"watchdog": True})
         local_header = "[watchdog]"
         self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
@@ -261,6 +279,12 @@ class I2TCPserver:
         self.threads.update({"watchdog": False})
 
     def _mainloop_thread(self):
+        """
+        server mainloop, accept incoming connection
+
+        :return: None
+        """
+
         self.threads.update({"mainloop": True})
         local_header = "[mainloop]"
         self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
@@ -287,6 +311,13 @@ class I2TCPserver:
         self.threads.update({"mainloop": False})
 
     def start(self, port=None):
+        """
+        start I2TCP server
+
+        :param port: int (default self.port), port to be bond
+        :return: None
+        """
+
         if port is None:
             port = self.port
         else:
@@ -315,6 +346,12 @@ class I2TCPserver:
             self.logger.ERROR("{} failed to start server, {}".format(self.log_header, err))
 
     def kill(self):
+        """
+        stop the server
+
+        :return: None
+        """
+
         self.live = False
         tick = 0
         alive = True
@@ -337,6 +374,13 @@ class I2TCPserver:
             tick += 1
 
     def get_connection(self):
+        """
+        get the latest connected connection that yet to be
+        handled
+
+        :return: I2TCPhandler, connection handler
+        """
+
         ret = None
         for i in range(self.max_con):
             if self.connections[i] is None:
@@ -352,6 +396,18 @@ class I2TCPhandler:
 
     def __init__(self, srv, addr, parent, timeout=20,
                  buffer_max=256, watchdog_timeout=15, temp_dir="temp"):
+        """
+        I2TCP connection handler
+
+        :param srv: socket.socket, socket server object
+        :param addr: str, incoming connection address
+        :param parent: I2TCPserver, father object
+        :param timeout (default: 20): int, timeout for connection
+        :param buffer_max (default: 256): int,
+        :param watchdog_timeout (default 15):
+        :param temp_dir (default: "temp"): cache directory, reserved option
+        """
+
         self.addr = addr
         self.srv = srv
         self.keygen = parent.keygen
@@ -380,6 +436,13 @@ class I2TCPhandler:
             self.kill()
 
     def _packager(self, data):
+        """
+        pack data with I2TCP format
+
+        :param data: bytes
+        :return: List(bytes), packed data
+        """
+
         offset = 0
         paks = []
         length = len(data)
@@ -400,6 +463,13 @@ class I2TCPhandler:
         return paks
 
     def _depacker(self, pak_data):
+        """
+        depack packed data to normal data format
+
+        :param pak_data: bytes, packed data
+        :return: bytes, data
+        """
+
         header_unit = self.version + self.keygen.key
         pak_type = pak_data[0]
         ret = None
@@ -418,6 +488,13 @@ class I2TCPhandler:
         return ret
 
     def _receiver_thread(self):
+        """
+        data receiving service, receive I2TCP package from client
+        and move it to buffer with depacked data
+
+        :return: None
+        """
+
         self.threads.update({"receiver": True})
         local_header = "[receiver]"
         self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
@@ -447,6 +524,14 @@ class I2TCPhandler:
         self.threads.update({"receiver": False})
 
     def _watchdog_thread(self):
+        """
+        handler watchdog, keeps connection alive and kills it when
+        client is not responding, handle package buffer overflow
+        event
+
+        :return: None
+        """
+
         self.threads.update({"watchdog": True})
         local_header = "[watchdog]"
         self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
@@ -475,7 +560,7 @@ class I2TCPhandler:
                     if len(self.package_buffer) > self.buffer_max:
                         self.logger.ERROR("{} {} package buffer overflowed, cleaning...".format(self.log_header,
                                                                                                 local_header))
-                        self.package_buffer = []
+                        self.package_buffer.pop(-1)
 
                 if not self.parent.live:
                     self.logger.DEBUG("{} {} parent loop stopping, killing handler".format(self.log_header,
@@ -493,9 +578,21 @@ class I2TCPhandler:
         self.threads.update({"watchdog": False})
 
     def _feed_watchdog(self):
+        """
+        reset the timer of watchdog to keep watchdog from timeout
+
+        :return: None
+        """
+
         self.watchdog_waitting = 0
 
     def _auth(self):
+        """
+        authenticate sequence for incoming connection
+
+        :return: bool, authentication status
+        """
+
         self.logger.DEBUG("{} connected".format(self.log_header))
         ret = False
 
@@ -515,6 +612,13 @@ class I2TCPhandler:
         return ret
 
     def _recv(self):
+        """
+        receive raw data from client socket connection and
+        depack it till a whole package is received
+
+        :return: bytes, depacked data
+        """
+
         all_data = None
 
         ret = None
@@ -560,6 +664,12 @@ class I2TCPhandler:
         return all_data
 
     def _start(self):
+        """
+        start watchdog service and receiver service
+
+        :return: None
+        """
+
         if not self.threads["receiver"]:
             thr = threading.Thread(target=self._receiver_thread)
             thr.start()
@@ -568,6 +678,12 @@ class I2TCPhandler:
             thr.start()
 
     def kill(self):
+        """
+        kill this connection
+
+        :return: None
+        """
+
         self.live = False
         try:
             self.srv.close()
@@ -587,6 +703,13 @@ class I2TCPhandler:
                 break
 
     def send(self, data):
+        """
+        send data with I2TCP format to client
+
+        :param data: bytes, regular data
+        :return: int, total package length (include header)
+        """
+
         packs = self._packager(data)
         sent = 0
         try:
@@ -600,6 +723,14 @@ class I2TCPhandler:
         return sent
 
     def recv(self, timeout=0):
+        """
+        receive a whole package from client
+
+        :param timeout: int (default: 0), timeout for not
+        receiving data from client
+        :return: bytes, depacked data
+        """
+
         ret = None
         t = time.time()
         while True:

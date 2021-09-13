@@ -190,6 +190,15 @@ class I2TCPclient:
 
     def __init__(self, hostname, port=27631, key="basic",
                  watchdog_timeout=15, logger=logger()):
+        """
+        I2TCPclient Class
+
+        :param hostname: str, server address
+        :param port: int, server port
+        :param key: str, dynamic key for authentication
+        :param watchdog_timeout: int, watchdog timeout
+        :param logger: Logger, client log output object
+        """
         self.address = (hostname, port)
         self.clt = None
         self.keygen = dynKey(key)
@@ -207,6 +216,12 @@ class I2TCPclient:
         self.connected = False
 
     def _packager(self, data):
+        """
+        pack data with I2TCP format
+
+        :param data: bytes
+        :return: List(bytes), packed data
+        """
         offset = 0
         paks = []
         length = len(data)
@@ -227,6 +242,13 @@ class I2TCPclient:
         return paks
 
     def _depacker(self, pak_data):
+        """
+        depack packed data to normal data format
+
+        :param pak_data: bytes, packed data
+        :return: bytes, data
+        """
+
         pak_type = pak_data[0]
         header_unit = self.version + self.keygen.key
         if pak_type == ord("H"):
@@ -244,6 +266,12 @@ class I2TCPclient:
         return ret
 
     def _heartbeat_thread(self):
+        """
+        watchdog heartbeat service, this keeps connection alive
+
+        :return: None
+        """
+
         self.threads.update({"heartbeat": True})
         local_header = "[heartbeat]"
         self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
@@ -273,6 +301,12 @@ class I2TCPclient:
         self.threads.update({"heartbeat": False})
 
     def _watchdog_thread(self):
+        """
+        watchdog service, keeps connection available
+
+        :return: None
+        """
+
         self.threads.update({"watchdog": True})
         local_header = "[watchdog]"
         self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
@@ -302,9 +336,21 @@ class I2TCPclient:
         self.threads.update({"watchdog": False})
 
     def _feed_watchdog(self):
+        """
+        reset the timer of watchdog to keep watchdog from timeout
+
+        :return: None
+        """
+
         self.watchdog_waitting = 0
 
     def _start(self):
+        """
+        start watchdog service and heartbeat service
+
+        :return: None
+        """
+
         if not self.threads["heartbeat"]:
             heartbeat_thr = threading.Thread(target=self._heartbeat_thread)
             heartbeat_thr.start()
@@ -313,6 +359,12 @@ class I2TCPclient:
             watchdog_thr.start()
 
     def reset(self):
+        """
+        reset connection status (close the connection)
+
+        :return: None
+        """
+
         self.live = False
         try:
             self.clt.close()
@@ -322,6 +374,12 @@ class I2TCPclient:
         self.connected = False
 
     def connect(self):
+        """
+        connect to server
+
+        :return: bool, connection status
+        """
+
         if self.connected:
             self.logger.ERROR("{} server has already connected".format(self.log_header))
             return self.connected
@@ -352,6 +410,13 @@ class I2TCPclient:
         return self.connected
 
     def send(self, data):
+        """
+        send data to connected server
+
+        :param data: bytes
+        :return: int, total data length (include headers)
+        """
+
         if self.clt is None or not self.connected:
             raise Exception("no connection built yet")
         paks = self._packager(data)
@@ -367,6 +432,12 @@ class I2TCPclient:
         return sent
 
     def recv(self):
+        """
+        receive a package from server
+
+        :return: bytes, depacked data
+        """
+
         if self.clt is None or not self.connected:
             raise Exception("no connection built yet")
 

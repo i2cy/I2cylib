@@ -11,7 +11,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="i2cylib", # Replace with your own username
-    version="1.2.1",
+    version="1.3.1",
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
     description="A Python library contains a lot of useful functions and tools",
@@ -28,4 +28,6 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
+    entry_points={'console_scripts':
+                      ["i2cydbserver = i2cylib.database.I2DB.i2cydbserver:main"]}
 )
