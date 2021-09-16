@@ -188,14 +188,14 @@ class dynKey: # 64-Bits dynamic key generator/matcher
 
 class I2TCPclient:
 
-    def __init__(self, hostname, port=27631, key="basic",
+    def __init__(self, hostname, port=27631, key=b"basic",
                  watchdog_timeout=15, logger=logger()):
         """
         I2TCPclient Class
 
         :param hostname: str, server address
         :param port: int, server port
-        :param key: str, dynamic key for authentication
+        :param key: bytes, dynamic key for authentication
         :param watchdog_timeout: int, watchdog timeout
         :param logger: Logger, client log output object
         """

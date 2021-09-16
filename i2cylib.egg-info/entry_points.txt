@@ -1,0 +1,3 @@
+[console_scripts]
+i2cydbserver = i2cylib.database.I2DB.i2cydbserver:main
+
