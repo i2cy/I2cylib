@@ -431,7 +431,7 @@ class I2TCPclient:
 
         return sent
 
-    def recv(self):
+    def recv(self, exception=True):
         """
         receive a package from server
 
@@ -471,7 +471,8 @@ class I2TCPclient:
                     data += self.clt.recv(ret["package_length"] - length)
                 all_data += data
         except Exception as err:
-            self.logger.ERROR("{} failed to receive message, {}".format(self.log_header, err))
+            if exception:
+                self.logger.ERROR("{} failed to receive message, {}".format(self.log_header, err))
             all_data = None
 
         return all_data

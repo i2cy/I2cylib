@@ -193,11 +193,11 @@ class dynKey: # 64-Bits dynamic key generator/matcher
 
 class I2TCPserver:
 
-    def __init__(self, key="basic", port=27631, max_con=20, logger=logger()):
+    def __init__(self, key=b"basic", port=27631, max_con=20, logger=logger()):
         """
         I2TCP server class
 
-        :param key: str, dynamic key for authentication
+        :param key: bytes, dynamic key for authentication
         :param port: int, server port that to be bond
         :param max_con: int, max TCP connection(s) that allowed
                         to be accept at the same time
