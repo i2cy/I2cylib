@@ -414,6 +414,7 @@ class I2TCPhandler:
         self.logger = parent.logger
         self.version = parent.version
         self.live = True
+        self.busy = False
 
         self.log_header = "[I2TCP] [{}:{}]".format(self.addr[0], self.addr[1])
 
@@ -712,6 +713,12 @@ class I2TCPhandler:
 
         packs = self._packager(data)
         sent = 0
+
+        while self.busy:
+            time.sleep(0.005)
+
+        self.busy = True
+
         try:
             for i in packs:
                 ret = self.srv.sendall(i)
@@ -719,6 +726,8 @@ class I2TCPhandler:
                 self._feed_watchdog()
         except Exception as err:
             self.logger.ERROR("{} failed to send data, {}".format(self.log_header, err))
+
+        self.busy = False
 
         return sent
 

@@ -206,6 +206,7 @@ class I2TCPclient:
         self.log_header = "[I2TCP]"
         self.logger = logger
         self.version = VERSION.encode()
+        self.busy = False
 
         self.mac_id = uuid.UUID(int = uuid.getnode()).bytes[-6:]
 
@@ -373,7 +374,7 @@ class I2TCPclient:
         self.clt = None
         self.connected = False
 
-    def connect(self):
+    def connect(self, timeout=10):
         """
         connect to server
 
@@ -384,7 +385,7 @@ class I2TCPclient:
             self.logger.ERROR("{} server has already connected".format(self.log_header))
             return self.connected
         clt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        clt.settimeout(10)
+        clt.settimeout(timeout)
         try:
             clt.connect(self.address)
         except Exception as err:
@@ -421,6 +422,12 @@ class I2TCPclient:
             raise Exception("no connection built yet")
         paks = self._packager(data)
         sent = 0
+
+        while self.busy:
+            time.sleep(0.005)
+
+        self.busy = True
+
         try:
             for i in paks:
                 ret = self.clt.sendall(i)
@@ -428,6 +435,8 @@ class I2TCPclient:
                 self._feed_watchdog()
         except Exception as err:
             self.logger.ERROR("{} failed to send message, {}".format(self.log_header, err))
+
+        self.busy = False
 
         return sent
 
