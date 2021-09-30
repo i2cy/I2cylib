@@ -620,8 +620,6 @@ class I2TCPhandler:
         :return: bytes, depacked data
         """
 
-        all_data = None
-
         ret = None
         while ret is None:
             pak = self.srv.recv(9)
@@ -715,7 +713,7 @@ class I2TCPhandler:
         sent = 0
 
         while self.busy:
-            time.sleep(0.005)
+            time.sleep(0.002)
 
         self.busy = True
 
@@ -750,7 +748,7 @@ class I2TCPhandler:
             if timeout == 0 or (time.time() - t) > timeout:
                 break
 
-            time.sleep(0.02)
+            time.sleep(0.002)
 
         return ret
 

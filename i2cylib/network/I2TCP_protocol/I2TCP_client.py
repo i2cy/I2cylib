@@ -11,11 +11,10 @@ import time
 import uuid
 from hashlib import md5
 
-
 VERSION = "1.1"
 
 
-class logger: # Logger
+class logger:  # Logger
     def __init__(self, filename=None, line_end="lf",
                  date_format="%Y-%m-%d %H:%M:%S", level="DEBUG", echo=True):
         self.level = 1
@@ -48,76 +47,81 @@ class logger: # Logger
         if filename == None:
             return
         try:
-            log_file = open(filename,"w")
+            log_file = open(filename, "w")
             log_file.close()
         except Exception as err:
             raise Exception("Can't open file: \"" + filename + "\", result: " + str(err))
-    def DEBUG(self,msg):
+
+    def DEBUG(self, msg):
         if self.level > 0:
             return
-        infos = "["+ time.strftime(self.date_format) +"] [DBUG] " + msg + self.line_end
+        infos = "[" + time.strftime(self.date_format) + "] [DBUG] " + msg + self.line_end
         if self.echo:
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
             return
-        log_file = open(self.filename,"a")
+        log_file = open(self.filename, "a")
         log_file.write(infos)
         log_file.close()
         return infos
-    def INFO(self,msg):
+
+    def INFO(self, msg):
         if self.level > 1:
             return
-        infos = "["+ time.strftime(self.date_format) +"] [INFO] " + msg + self.line_end
+        infos = "[" + time.strftime(self.date_format) + "] [INFO] " + msg + self.line_end
         if self.echo:
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
             return
-        log_file = open(self.filename,"a")
+        log_file = open(self.filename, "a")
         log_file.write(infos)
         log_file.close()
         return infos
-    def WARNING(self,msg):
+
+    def WARNING(self, msg):
         if self.level > 2:
             return
-        infos = "["+ time.strftime(self.date_format) +"] [WARN] " + msg + self.line_end
+        infos = "[" + time.strftime(self.date_format) + "] [WARN] " + msg + self.line_end
         if self.echo:
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
             return
-        log_file = open(self.filename,"a")
+        log_file = open(self.filename, "a")
         log_file.write(infos)
         log_file.close()
         return infos
-    def ERROR(self,msg):
+
+    def ERROR(self, msg):
         if self.level > 3:
             return
-        infos = "["+ time.strftime(self.date_format) +"] [EROR] " + msg + self.line_end
+        infos = "[" + time.strftime(self.date_format) + "] [EROR] " + msg + self.line_end
         if self.echo:
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
             return
-        log_file = open(self.filename,"a")
+        log_file = open(self.filename, "a")
         log_file.write(infos)
         log_file.close()
         return infos
-    def CRITICAL(self,msg):
-        infos = "["+ time.strftime(self.date_format) +"] [CRIT] " + msg + self.line_end
+
+    def CRITICAL(self, msg):
+        infos = "[" + time.strftime(self.date_format) + "] [CRIT] " + msg + self.line_end
         if self.echo:
             sys.stdout.write(infos)
             sys.stdout.flush()
         if self.filename == None:
             return
-        log_file = open(self.filename,"a")
+        log_file = open(self.filename, "a")
         log_file.write(infos)
         log_file.close()
         return infos
 
 
-class dynKey: # 64-Bits dynamic key generator/matcher
+class dynKey:  # 64-Bits dynamic key generator/matcher
 
     def __init__(self, key, flush_times=1, multiplier=0.01):
         if isinstance(key, str):
@@ -132,8 +136,7 @@ class dynKey: # 64-Bits dynamic key generator/matcher
             flush_times = 1
         self.flush_time = flush_times
 
-
-    def keygen(self, offset=0): # 64-Bits dynamic key generator
+    def keygen(self, offset=0):  # 64-Bits dynamic key generator
         time_unit = int(time.time() * self.multiplier) + int(offset)
         time_unit = str(time_unit).encode()
         time_unit = md5(time_unit).digest()
@@ -142,24 +145,25 @@ class dynKey: # 64-Bits dynamic key generator/matcher
 
         for i in range(self.flush_time):
             sub_key_unit = md5(sub_key_unit).digest()[::-1]
-            conv_core = [int((num + 1*self.multiplier) % 255 + 1) for num in sub_key_unit[:3]]
+            conv_core = [int((num + 1 * self.multiplier) % 255 + 1) for num in sub_key_unit[:3]]
             conv_res = []
             for i2, ele in enumerate(sub_key_unit[3:-2]):
                 conv_res_temp = 0
                 for c in range(3):
-                    conv_res_temp += sub_key_unit[3+i2+c] * conv_core[c]
-                conv_res.append(int(conv_res_temp%256))
+                    conv_res_temp += sub_key_unit[3 + i2 + c] * conv_core[c]
+                conv_res.append(int(conv_res_temp % 256))
             sub_key_unit = md5(sub_key_unit[:3] + bytes(conv_core)).digest()[::-1]
             sub_key_unit += md5(sub_key_unit + bytes(conv_res)).digest()
             sub_key_unit += md5(bytes(conv_res)).digest()
             sub_key_unit += md5(bytes(conv_res) + self.key).digest()
             sub_key_unit += key_unit
 
-        conv_cores = [[time_unit[i2] for i2 in range(4*i, 4*i+4)]
+        conv_cores = [[time_unit[i2] for i2 in range(4 * i, 4 * i + 4)]
                       for i in range(4)]
 
         for i, ele in enumerate(conv_cores):
-            ele.insert(2, 1*self.multiplier + (key_unit[i] + key_unit[i+4] + key_unit[i+8] + key_unit[i+12]) // 4)
+            ele.insert(2,
+                       1 * self.multiplier + (key_unit[i] + key_unit[i + 4] + key_unit[i + 8] + key_unit[i + 12]) // 4)
 
         final_key = sub_key_unit
 
@@ -169,17 +173,17 @@ class dynKey: # 64-Bits dynamic key generator/matcher
             for i2, ele in enumerate(final_key[:-4]):
                 conv_res_temp = 0
                 for c in range(5):
-                    conv_res_temp += final_key[i2+c] * conv_core[c]
-                conv_res.append(int(conv_res_temp%256))
+                    conv_res_temp += final_key[i2 + c] * conv_core[c]
+                conv_res.append(int(conv_res_temp % 256))
             final_key = bytes(conv_res)
 
         return final_key
 
-    def keymatch(self, key): # Live key matcher
+    def keymatch(self, key):  # Live key matcher
         lock_1 = self.keygen(-1)
         lock_2 = self.keygen(0)
         lock_3 = self.keygen(1)
-        lock = [lock_1,lock_2,lock_3]
+        lock = [lock_1, lock_2, lock_3]
         if key in lock:
             return True
         else:
@@ -208,7 +212,7 @@ class I2TCPclient:
         self.version = VERSION.encode()
         self.busy = False
 
-        self.mac_id = uuid.UUID(int = uuid.getnode()).bytes[-6:]
+        self.mac_id = uuid.UUID(int=uuid.getnode()).bytes[-6:]
 
         self.watchdog_waitting = 0
         self.watchdog_timeout = watchdog_timeout * 2
@@ -236,7 +240,7 @@ class I2TCPclient:
                 left -= 60000
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
-            pak += md5(pak+header_unit).digest()[:3]
+            pak += md5(pak + header_unit).digest()[:3]
             pak += data[offset:length - left]
             offset = length - left
             paks.append(pak)
@@ -258,8 +262,8 @@ class I2TCPclient:
             ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
                    "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
                    "header_md5": pak_data[6:9],
-                   "data":pak_data[9:]}
-            header_md5 = md5(pak_data[0:6]+header_unit).digest()[:3]
+                   "data": pak_data[9:]}
+            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
             if header_md5 != ret["header_md5"]:
                 ret = None
         else:
@@ -291,8 +295,8 @@ class I2TCPclient:
                             self._feed_watchdog()
                         except Exception as err:
                             self.logger.WARNING("{} {} failed to send heartbeat, {}".format(self.log_header,
-                                                                                       local_header,
-                                                                                       err))
+                                                                                            local_header,
+                                                                                            err))
                 time.sleep(0.5)
                 tick += 1
         except Exception as err:
@@ -319,7 +323,7 @@ class I2TCPclient:
                     tick = 0
                     if self.watchdog_waitting > self.watchdog_timeout:
                         self.logger.ERROR("{} {} server seems not responding, disconnecting...".format(self.log_header,
-                                                                                                  local_header))
+                                                                                                       local_header))
                         self.reset()
 
                 if self.clt is None or not self.connected:
