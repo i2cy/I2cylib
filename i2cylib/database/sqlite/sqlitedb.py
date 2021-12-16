@@ -331,6 +331,17 @@ class SqliteTableCursor:
 
     def get(self, key=None, column_name="*", primary_index_column=None,
             orderby=None, asc_order=True):
+        """
+        get lines of data with specified config
+
+        :param key: int(or str, tuple), index(s)
+        :param column_name: str, standard SQL (e.g. "Name, ID, GENDER, AGE")
+        :param primary_index_column: int(or str), column to be indexed
+        :param orderby:
+        :param asc_order:
+        :return:
+        """
+
         cursor = self.upper.database.cursor()
 
         if asc_order:
@@ -409,6 +420,16 @@ class SqliteTableCursor:
                index_key=None,
                column_names=None,
                primary_index_column=None):
+        """
+        update data with specified
+
+        :param data: list(or tuple)
+        :param index_key: int(or str), index
+        :param column_names: list, columns to be fetched
+        :param primary_index_column: str, the column to be index
+        :return: None
+        """
+
         cursor = self.upper.database.cursor()
 
         cmd = "UPDATE {} SET ".format(self.name)
@@ -458,6 +479,11 @@ class SqliteTableCursor:
 class SqlTable(object):
 
     def __init__(self, tableName):
+        """
+        initialize an SqlTable object
+
+        :param tableName: str
+        """
         self.name = tableName
         self.table = []
 
@@ -493,12 +519,32 @@ class SqlTable(object):
         return out
 
     def add_column(self, name, dtype):
+        """
+        add one column to the current table
+
+        :param name: str, column name
+        :param dtype: SqlDtype
+        :return: None
+        """
         self.table.append([str(name), dtype])
 
     def remove_column(self, index):
+        """
+        remove one column from the current table
+
+        :param index: int, column index
+        :return: None
+        """
         self.table.pop(index)
 
     def add_limit(self, index, limit):
+        """
+        add limit to one specified column
+
+        :param index: int, column index
+        :param limit: Sqlimit
+        :return: None
+        """
         if index not in range(len(self.table)):
             raise IndexError("column {} not found".format(index))
         if not isinstance(limit, str):
@@ -506,6 +552,14 @@ class SqlTable(object):
         self.table[index][1] += " {}".format(limit)
 
     def insert_column(self, index, name, dtype):
+        """
+        insert a column to the specified column
+
+        :param index: int, column index
+        :param name: str, column name
+        :param dtype: SqlDtype
+        :return: None
+        """
         self.table.insert(index, [name, dtype])
 
 

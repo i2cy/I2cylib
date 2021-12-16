@@ -78,17 +78,17 @@ class Handler(I2TCPhandler):
 
         ret = None
         t = time.time()
-        while True:
+        while ret is None:
             if len(self.package_buffer) > 0:
                 for i, ele in enumerate(self.package_buffer):
-                    if ele[:len(header)] == header or header is None:
+                    if header is None or ele[:len(header)] == header:
                         got = self.package_buffer.pop(i)
                         ret = got
                         break
-                break
-            if timeout == 0 or (time.time() - t) > timeout:
-                break
 
-            time.sleep(0.002)
+            if timeout:
+                time.sleep(0.002)
+            elif timeout == 0 or (time.time() - t) > timeout:
+                break
 
         return ret

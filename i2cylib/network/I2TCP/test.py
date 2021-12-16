@@ -5,11 +5,12 @@
 # Filename: test
 # Created on: 2021/9/30
 
-from i2cylib.network.I2TCP.client import Client
-from i2cylib.network.I2TCP.server import Server, Handler
+from client import Client
+from server import Server, Handler
 from i2cylib.utils.logger.logger import Logger
 from hashlib import sha512
 import random
+import time
 import threading
 
 
@@ -42,17 +43,22 @@ if __name__ == '__main__':
 
     assert isinstance(srv_clt, Handler)
 
-    while True:
-        data_recv = srv_clt.get(b"A15")
-        if data_recv is not None:
-            break
+    data_recv_nohead = srv_clt.get(timeout=3)
+    data_recv = srv_clt.get(b"A15", timeout=3)
+
+    logger.INFO("[main] data with head {} received".format(data_recv_nohead[:3]))
+
+    logger.INFO("[main] data with head {} has been got (arg=b\"A15\")".format(data_recv[:3]))
 
     data_recv = data_recv[3:]
+    data_recv_nohead = data_recv_nohead[3:]
 
     hasher_2 = sha512()
     hasher_2.update(data_recv)
 
     logger.INFO("[main] data transition result: {}".format(hasher_2.digest() == hasher_1.digest()))
+
+    time.sleep(1)
 
     clt.reset()
     srv.kill()

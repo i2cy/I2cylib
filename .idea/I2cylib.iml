@@ -11,6 +11,7 @@
     <option name="namespacePackageFolders">
       <list>
         <option value="$MODULE_DIR$/i2cylib/crypto/I2EN" />
+        <option value="$MODULE_DIR$/i2cylib/engineering" />
       </list>
     </option>
   </component>

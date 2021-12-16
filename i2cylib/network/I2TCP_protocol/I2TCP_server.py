@@ -11,7 +11,6 @@ import sys
 import uuid
 from hashlib import md5
 
-
 VERSION = "1.1"
 
 
@@ -122,7 +121,7 @@ class logger:  # Logger
         return infos
 
 
-class dynKey: # 64-Bits dynamic key generator/matcher
+class dynKey:  # 64-Bits dynamic key generator/matcher
 
     def __init__(self, key, flush_times=1, multiplier=0.01):
         if isinstance(key, str):
@@ -137,8 +136,7 @@ class dynKey: # 64-Bits dynamic key generator/matcher
             flush_times = 1
         self.flush_time = flush_times
 
-
-    def keygen(self, offset=0): # 64-Bits dynamic key generator
+    def keygen(self, offset=0):  # 64-Bits dynamic key generator
         time_unit = int(time.time() * self.multiplier) + int(offset)
         time_unit = str(time_unit).encode()
         time_unit = md5(time_unit).digest()
@@ -147,24 +145,25 @@ class dynKey: # 64-Bits dynamic key generator/matcher
 
         for i in range(self.flush_time):
             sub_key_unit = md5(sub_key_unit).digest()[::-1]
-            conv_core = [int((num + 1*self.multiplier) % 255 + 1) for num in sub_key_unit[:3]]
+            conv_core = [int((num + 1 * self.multiplier) % 255 + 1) for num in sub_key_unit[:3]]
             conv_res = []
             for i2, ele in enumerate(sub_key_unit[3:-2]):
                 conv_res_temp = 0
                 for c in range(3):
-                    conv_res_temp += sub_key_unit[3+i2+c] * conv_core[c]
-                conv_res.append(int(conv_res_temp%256))
+                    conv_res_temp += sub_key_unit[3 + i2 + c] * conv_core[c]
+                conv_res.append(int(conv_res_temp % 256))
             sub_key_unit = md5(sub_key_unit[:3] + bytes(conv_core)).digest()[::-1]
             sub_key_unit += md5(sub_key_unit + bytes(conv_res)).digest()
             sub_key_unit += md5(bytes(conv_res)).digest()
             sub_key_unit += md5(bytes(conv_res) + self.key).digest()
             sub_key_unit += key_unit
 
-        conv_cores = [[time_unit[i2] for i2 in range(4*i, 4*i+4)]
+        conv_cores = [[time_unit[i2] for i2 in range(4 * i, 4 * i + 4)]
                       for i in range(4)]
 
         for i, ele in enumerate(conv_cores):
-            ele.insert(2, 1*self.multiplier + (key_unit[i] + key_unit[i+4] + key_unit[i+8] + key_unit[i+12]) // 4)
+            ele.insert(2,
+                       1 * self.multiplier + (key_unit[i] + key_unit[i + 4] + key_unit[i + 8] + key_unit[i + 12]) // 4)
 
         final_key = sub_key_unit
 
@@ -174,17 +173,17 @@ class dynKey: # 64-Bits dynamic key generator/matcher
             for i2, ele in enumerate(final_key[:-4]):
                 conv_res_temp = 0
                 for c in range(5):
-                    conv_res_temp += final_key[i2+c] * conv_core[c]
-                conv_res.append(int(conv_res_temp%256))
+                    conv_res_temp += final_key[i2 + c] * conv_core[c]
+                conv_res.append(int(conv_res_temp % 256))
             final_key = bytes(conv_res)
 
         return final_key
 
-    def keymatch(self, key): # Live key matcher
+    def keymatch(self, key):  # Live key matcher
         lock_1 = self.keygen(-1)
         lock_2 = self.keygen(0)
         lock_3 = self.keygen(1)
-        lock = [lock_1,lock_2,lock_3]
+        lock = [lock_1, lock_2, lock_3]
         if key in lock:
             return True
         else:
@@ -242,7 +241,7 @@ class I2TCPserver:
                 time.sleep(0.5)
             self.logger.DEBUG("{} {} kill signal received".format(self.log_header, local_header))
             self.logger.DEBUG("{} {} waiting for all connection(s) to be killed".format(self.log_header,
-                                                                                   local_header))
+                                                                                        local_header))
             tick = 0
             while True:
                 alive_con = 0
@@ -253,11 +252,11 @@ class I2TCPserver:
                         alive_con += 1
                 if alive_con == 0:
                     self.logger.INFO("{} {} all connection(s) have been killed".format(self.log_header,
-                                                                                  local_header))
+                                                                                       local_header))
                     break
                 if tick > 30:
                     self.logger.WARNING("{} {} some connection can not be killed".format(self.log_header,
-                                                                                    local_header))
+                                                                                         local_header))
                     break
                 time.sleep(0.5)
                 tick += 1
@@ -269,7 +268,7 @@ class I2TCPserver:
                 self.srv.close()
             except Exception as err:
                 self.logger.WARNING("{} {} failed to kill mainloop or it has been killed".format(self.log_header,
-                                                                                            local_header))
+                                                                                                 local_header))
             self.srv = None
 
         except Exception as err:
@@ -294,7 +293,7 @@ class I2TCPserver:
                 con, addr = self.srv.accept()
                 if self.live:
                     self.logger.INFO("{} new connection {}:{} coming in".format(self.log_header,
-                                                                            addr[0], addr[1]))
+                                                                                addr[0], addr[1]))
                     handler = I2TCPhandler(con, addr, self)
                     for i in range(self.max_con):
                         if self.connections[i] is None:
@@ -368,12 +367,12 @@ class I2TCPserver:
 
             if tick > 60:
                 self.logger.ERROR("{} shutdown timeout, live thread(s): {}".format(self.log_header,
-                                                                              live_threads))
+                                                                                   live_threads))
                 break
             time.sleep(0.5)
             tick += 1
 
-    def get_connection(self):
+    def get_connection(self, wait=False):
         """
         get the latest connected connection that yet to be
         handled
@@ -382,12 +381,16 @@ class I2TCPserver:
         """
 
         ret = None
-        for i in range(self.max_con):
-            if self.connections[i] is None:
-                continue
-            if not self.connections[i]["handled"]:
-                ret = self.connections[i]["handler"]
-                self.connections[i]["handled"] = True
+        while ret is None and self.live:
+            for i in range(self.max_con):
+                if self.connections[i] is None:
+                    continue
+                if not self.connections[i]["handled"]:
+                    ret = self.connections[i]["handler"]
+                    self.connections[i]["handled"] = True
+                    break
+            if not wait:
+                break
 
         return ret
 
@@ -457,7 +460,7 @@ class I2TCPhandler:
                 left -= 60000
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
-            pak += md5(pak+header_unit).digest()[:3]
+            pak += md5(pak + header_unit).digest()[:3]
             pak += data[offset:length - left]
             offset = length - left
             paks.append(pak)
@@ -481,7 +484,7 @@ class I2TCPhandler:
                    "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
                    "header_md5": pak_data[6:9],
                    "data": pak_data[9:]}
-            header_md5 = md5(pak_data[0:6]+header_unit).digest()[:3]
+            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
             if header_md5 != ret["header_md5"]:
                 ret = None
         else:
@@ -508,14 +511,18 @@ class I2TCPhandler:
                     if not self.live:
                         break
                     self.logger.ERROR("{} {} failed to receive data from client, {}".format(self.log_header,
-                                                                                       local_header,
-                                                                                       err))
+                                                                                            local_header,
+                                                                                            err))
                     continue
 
                 if pak is None:
                     self.logger.INFO("{} {} connection lost".format(self.log_header, local_header))
                     threading.Thread(target=self.kill).start()
                 else:
+                    self.logger.DEBUG("{} {} new package received, buffer size now {}".format(
+                        self.log_header,
+                        local_header,
+                        len(self.package_buffer)))
                     self.package_buffer.append(pak)
 
         except Exception as err:
@@ -544,7 +551,7 @@ class I2TCPhandler:
                     tick = 0
                     if self.watchdog_waitting > self.watchdog_timeout:
                         self.logger.ERROR("{} {} client seems not responding, disconnecting...".format(self.log_header,
-                                                                                                  local_header))
+                                                                                                       local_header))
                         threading.Thread(target=self.kill).start()
                         break
                 if tick % 2 == 0:
@@ -552,8 +559,8 @@ class I2TCPhandler:
                     for i in self.threads.keys():
                         if not self.threads[i]:
                             self.logger.WARNING("{} {} thread \"{}\" seems offline".format(self.log_header,
-                                                                                      local_header,
-                                                                                      i))
+                                                                                           local_header,
+                                                                                           i))
                             err = True
                     if err:
                         self._start()
@@ -561,11 +568,12 @@ class I2TCPhandler:
                     if len(self.package_buffer) > self.buffer_max:
                         self.logger.ERROR("{} {} package buffer overflowed, cleaning...".format(self.log_header,
                                                                                                 local_header))
-                        self.package_buffer.pop(-1)
+                        while len(self.package_buffer) > self.buffer_max:
+                            self.package_buffer.pop(0)
 
                 if not self.parent.live:
                     self.logger.DEBUG("{} {} parent loop stopping, killing handler".format(self.log_header,
-                                                                                      local_header))
+                                                                                           local_header))
                     threading.Thread(target=self.kill).start()
                     break
 
@@ -605,7 +613,7 @@ class I2TCPhandler:
                 self.logger.DEBUG("{} authorized".format(self.log_header))
             else:
                 self.logger.WARNING("{} unauthorized connection, key received: {}".format(self.log_header,
-                                                                                     dynamic_key))
+                                                                                          dynamic_key))
 
         except Exception as err:
             self.logger.WARNING("{} authentication process failure, {}".format(self.log_header, err))
@@ -636,7 +644,7 @@ class I2TCPhandler:
 
         total_length = ret["total_length"]
         self.logger.DEBUG("{} receiving data of total length {}".format(self.log_header,
-                                                                   total_length))
+                                                                        total_length))
 
         data = b""
         length = 0
@@ -740,15 +748,16 @@ class I2TCPhandler:
 
         ret = None
         t = time.time()
-        while True:
+        while ret is None:
             if len(self.package_buffer) > 0:
                 got = self.package_buffer.pop(0)
                 ret = got
                 break
-            if timeout == 0 or (time.time() - t) > timeout:
-                break
 
-            time.sleep(0.002)
+            if timeout:
+                time.sleep(0.002)
+            elif timeout == 0 or (time.time() - t) > timeout:
+                break
 
         return ret
 

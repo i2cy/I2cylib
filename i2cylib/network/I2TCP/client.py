@@ -65,7 +65,7 @@ class Client(I2TCPclient):
                 self.package_buffer.append(package)
 
             if len(self.package_buffer) > self.max_buffer:
-                self.package_buffer.pop(-1)
+                self.package_buffer.pop(0)
                 self.logger.WARNING("{} {} package buffer emitted, packages the oldest may be lost".format(
                     self.log_header, local_header
                 ))
@@ -86,18 +86,18 @@ class Client(I2TCPclient):
 
         ret = None
         t = time.time()
-        while True:
+        while ret is None:
             if len(self.package_buffer) > 0:
                 for i, ele in enumerate(self.package_buffer):
-                    if ele[:len(header)] == header or header is None:
+                    if header is None or ele[:len(header)] == header:
                         got = self.package_buffer.pop(i)
                         ret = got
                         break
-                break
-            if timeout == 0 or (time.time() - t) > timeout:
-                break
 
-            time.sleep(0.02)
+            if timeout:
+                time.sleep(0.002)
+            elif timeout == 0 or (time.time() - t) > timeout:
+                break
 
         return ret
 

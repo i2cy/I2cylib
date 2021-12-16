@@ -10,8 +10,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="i2cylib", # Replace with your own username
-    version="1.4.5",
+    name="i2cylib",  # Replace with your own username
+    version="1.5.0",
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
     description="A Python library contains a lot of useful functions and tools",
@@ -26,9 +26,15 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+        'numpy',
+    ],
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
     entry_points={'console_scripts':
-                      ["i2cydbserver = i2cylib.database.I2DB.i2cydbserver:main",
-                       "i2en = i2cylib.crypto.I2EN.icen:main"]}
+        [
+            "i2cydbserver = i2cylib.database.I2DB.i2cydbserver:main",
+            "i2en = i2cylib.crypto.I2EN.icen:main"
+        ]
+    }
 )
