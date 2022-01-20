@@ -167,7 +167,7 @@ def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_mod
         exp.append(exp_t)
 
         pid.expectation = exp_t
-        pid.measures = object_pos[-1] * noise_k * random.random()
+        pid.measures = object_pos[-1] + noise_k * random.random()
         pid.calc(dt)
         pid_out.append(pid.out)
 
@@ -182,16 +182,22 @@ def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_mod
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    x, exp, pos, out = test(p=12.0, i=0, d=0,
+    x, exp, pos, out = test(p=70.0, i=130, d=4,
                             test_mass=2.2,
-                            test_exp_model=[[0, 1]],
-                            test_time=500,
+                            test_exp_model=[[0, 5],
+                                            [2.5, 5],
+                                            [5, 0],
+                                            [7, 1],
+                                            [9, 2],
+                                            ],
+                            test_time=10,
                             dt=0.01,
-                            noise_k=0.01)
+                            noise_k=0.4,
+                            gravity=10)
 
     plt.plot(x, exp, color="red")
     plt.plot(x, pos, color="blue")
-    plt.plot(x, out, color="green")
+    #plt.plot(x, out, color="green")
     plt.legend("epo")
     plt.show()
 

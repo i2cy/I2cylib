@@ -10,7 +10,7 @@ import os
 import sys
 
 
-def getHDDTemp(device): # hard drive temperature reader
+def getHDDTemp(device):  # hard drive temperature reader
     if not os.path.exists(device):
         raise Exception("device does not exists")
     pipe = os.popen("smartctl -A -f old "+device)
