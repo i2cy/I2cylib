@@ -32,7 +32,6 @@ class I2Target(object):
         self.max_thread_allowed = max_thread_allowed
 
         self.flag_scanned = False
-        self.flag_os_scanned = False
 
         self.thread_running = 0
 
@@ -57,37 +56,37 @@ class I2Target(object):
         pass
 
     def scan(self, timeout=3, wait=True, verbose=False, msg=b"GET /index.html HTTP/1.1"):
-        st = time.time()
-        dt = 0
-        n = 0
-        na = len(self.hosts) * len(self.ports)
-        if verbose:
-            self.echo.print("________TARGET_________|_STATE_|__PING___|____RESPONSE____")
-        for ip in self.hosts:
-            for port in self.ports:
-                if verbose and time.time() - dt > 0.25:
-                    dt = time.time()
-                    self.echo.buttom_print("{}:{:0>2}:{:0>2}  sanning..  ({}/{})    "
-                                           "running threads: {}".format(*trf_time(int(time.time() - st)),
-                                                                        n, na,
-                                                                        self.thread_running))
-                while self.thread_running >= self.max_thread_allowed:
+        if wait:
+            st = time.time()
+            dt = 0
+            n = 0
+            na = len(self.hosts) * len(self.ports)
+            if verbose:
+                self.echo.print("________TARGET_________|_STATE_|__PING___|____RESPONSE____")
+            for ip in self.hosts:
+                for port in self.ports:
                     if verbose and time.time() - dt > 0.25:
                         dt = time.time()
                         self.echo.buttom_print("{}:{:0>2}:{:0>2}  sanning..  ({}/{})    "
                                                "running threads: {}".format(*trf_time(int(time.time() - st)),
                                                                             n, na,
                                                                             self.thread_running))
-                    time.sleep(0.001)
-                while True:
-                    try:
-                        threading.Thread(target=self.__scan__, args=(ip, port, timeout, verbose, True, msg)).start()
-                        break
-                    except:
-                        continue
-                n += 1
+                    while self.thread_running >= self.max_thread_allowed:
+                        if verbose and time.time() - dt > 0.25:
+                            dt = time.time()
+                            self.echo.buttom_print("{}:{:0>2}:{:0>2}  sanning..  ({}/{})    "
+                                                   "running threads: {}".format(*trf_time(int(time.time() - st)),
+                                                                                n, na,
+                                                                                self.thread_running))
+                        time.sleep(0.001)
+                    while True:
+                        try:
+                            threading.Thread(target=self.__scan__, args=(ip, port, timeout, verbose, True, msg)).start()
+                            break
+                        except:
+                            continue
+                    n += 1
 
-        if wait:
             n = 0
             while self.thread_running:
                 if verbose:
@@ -101,6 +100,10 @@ class I2Target(object):
             if verbose:
                 self.echo.buttom_print("{}:{:0>2}:{:0>2}  scan completed".format(
                     *trf_time(int(time.time() - st))))
+        else:
+            threading.Thread(target=self.scan, args=(timeout, True, verbose, msg)).start()
+
+        self.flag_scanned = True
 
         return self
 
@@ -139,7 +142,7 @@ class FullScan(I2Target):
 
     def __scan__(self, ip, port,
                  timeout=3,
-                 verbose=True,
+                 verbose=False,
                  update_self=True,
                  msg=b"GET /index.html HTTP/1.1"):
         self.thread_running += 1
@@ -171,7 +174,7 @@ class FullScan(I2Target):
             # raise err
             pass
 
-        if self.scan_res[ip][port]["is_open"]:
+        if self.scan_res[ip][port]["is_open"] and verbose:
             open = "OPEN "
             self.echo.print("{:>16}:{:<5} | {} | {: >4} ms | {}".format(ip, port, open, int(ta * 1000), ret))
 
@@ -349,19 +352,23 @@ def main():
 
 
 def test():
-    h = ["52.175.59.84",
-         "i2cy.tech",
+    h = ["i2cy.tech",
+         "52.175.59.84",
          "godaftwithebk.pub",
          "an.godaftwithebk.pub"]
     p = list(range(1, 65535))
 
-    t = FullScan(h, p, 5000)
-    t.scan(timeout=3, wait=True, verbose=True)
+    t = FullScan(h, p, 4000)
+    t.scan(timeout=6, wait=False)
+    time.sleep(3)
+    print("22:", t['i2cy.tech'][22])
+    print("22:", t['i2cy.tech'][22])
 
 
 if __name__ == '__main__':
-    # test()
+    test()
     try:
         main()
     except KeyboardInterrupt:
         exit(-1)
+    print("")
