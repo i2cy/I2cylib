@@ -366,7 +366,7 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    # test()
     try:
         main()
     except KeyboardInterrupt:
