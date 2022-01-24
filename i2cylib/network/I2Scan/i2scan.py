@@ -347,8 +347,11 @@ def main():
         except KeyboardInterrupt:
             echo.buttom_print("scanner process aborted by keyboard")
     except Exception as err:
+        echo.buttom_print("")
         echo.print("error: {}".format(err))
         return -1
+    echo.print(echo.buttom_line)
+    echo.buttom_print("")
 
 
 def test():
@@ -366,9 +369,4 @@ def test():
 
 
 if __name__ == '__main__':
-    # test()
-    try:
-        main()
-    except KeyboardInterrupt:
-        exit(-1)
-    print("")
+    test()
