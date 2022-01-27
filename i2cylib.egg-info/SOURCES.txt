@@ -10,8 +10,8 @@ i2cylib.egg-info/entry_points.txt
 i2cylib.egg-info/requires.txt
 i2cylib.egg-info/top_level.txt
 i2cylib/crypto/__init__.py
-i2cylib/crypto/I2EN/__init__.py
-i2cylib/crypto/I2EN/icen.py
+i2cylib/crypto/I2En/__init__.py
+i2cylib/crypto/I2En/icen.py
 i2cylib/crypto/iccode/__init__.py
 i2cylib/crypto/iccode/iccode.py
 i2cylib/crypto/keygen/__init__.py
@@ -35,9 +35,9 @@ i2cylib/network/I2TCP/__init__.py
 i2cylib/network/I2TCP/client.py
 i2cylib/network/I2TCP/server.py
 i2cylib/network/I2TCP/test.py
-i2cylib/network/I2TCP_protocol/I2TCP_client.py
-i2cylib/network/I2TCP_protocol/I2TCP_server.py
-i2cylib/network/I2TCP_protocol/__init__.py
+i2cylib/network/i2tcp_basic/__init__.py
+i2cylib/network/i2tcp_basic/base_client.py
+i2cylib/network/i2tcp_basic/base_server.py
 i2cylib/utils/__init__.py
 i2cylib/utils/args/__init__.py
 i2cylib/utils/args/decode_args.py

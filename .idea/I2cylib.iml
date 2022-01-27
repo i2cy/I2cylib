@@ -11,9 +11,12 @@
   <component name="PyNamespacePackagesService">
     <option name="namespacePackageFolders">
       <list>
-        <option value="$MODULE_DIR$/i2cylib/crypto/I2EN" />
+        <option value="$MODULE_DIR$/i2cylib/crypto/I2En" />
         <option value="$MODULE_DIR$/i2cylib/engineering" />
       </list>
     </option>
+  </component>
+  <component name="ReSTService">
+    <option name="DOC_DIR" value="$MODULE_DIR$" />
   </component>
 </module>

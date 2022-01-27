@@ -349,7 +349,6 @@ def main():
     except Exception as err:
         echo.buttom_print("")
         echo.print("error: {}".format(err))
-        return -1
     echo.print(echo.buttom_line)
     echo.buttom_print("")
 

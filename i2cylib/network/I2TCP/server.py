@@ -6,7 +6,7 @@
 # Created on: 2021/9/29
 
 
-from i2cylib.network.I2TCP_protocol.I2TCP_server import *
+from i2cylib.network.i2tcp_basic.base_server import *
 from i2cylib.utils.logger.logger import Logger
 
 
@@ -15,13 +15,13 @@ class Server(I2TCPserver):
     def __init__(self, key=b"I2TCPbasicKey", port=24678,
                  max_con=20, logger=Logger()):
         """
-        modified I2TCP server class
+        I2TCP server class  I2TCP服务端类
 
-        :param key: str(or bytes), dynamic key for authentication
-        :param port: int, server port that to be bond
+        :param key: str(or bytes), dynamic key for authentication  对称动态密钥
+        :param port: int, server port that to be bond  服务端要绑定的端口号
         :param max_con: int, max TCP connection(s) that allowed
-                        to be accept at the same time
-        :param logger: Logger, server log output object
+                        to be accept at the same time  最大同时接受的连接数
+        :param logger: Logger, server log output object  日志器（来自于i2cylib.utils.logger.logger.Logger）
         """
         super(Server, self).__init__(key=key, port=port, max_con=max_con,
                                      logger=logger)
@@ -58,6 +58,32 @@ class Server(I2TCPserver):
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
         self.threads.update({"mainloop": False})
 
+    def start(self, port=None):
+        """
+        start I2TCP server  启动I2TCP服务端并开始监听端口
+        
+        :param port: int or None, leave it empty to use self.port  选择端口，默认self.port
+        :return: None
+        """
+        super(Server, self).start(port=port)
+    
+    def kill(self):
+        """
+        kill I2TCP server  关闭I2TCP服务端
+        
+        :return: None
+        """
+        super(Server, self).kill()
+    
+    def get_connection(self, wait=False):
+        """
+        get one connection that yet to be handled  获取一个尚未被接手的连接
+        
+        :param wait: bool, should we wait or not until we got a connection  是否阻塞
+        :return: Handler, connection handler  连接处理类
+        """
+        return super(Server, self).get_connection(wait=wait)
+
 
 class Handler(I2TCPhandler):
 
@@ -66,14 +92,30 @@ class Handler(I2TCPhandler):
         super(Handler, self).__init__(srv, addr, parent, timeout=20,
                                       buffer_max=256, watchdog_timeout=15, temp_dir="temp")
 
+    def kill(self):
+        """
+        kill this connection  关闭这个连接
+
+        :return: None
+        """
+        super(Handler, self).kill()
+
+    def send(self, data):
+        """
+        send data to client  向客户端发送数据
+
+        :param data: bytes, data to send (smaller than 16MB) 待发送的数据
+        :return: int, total amount of bytes that has been sent 发送出去的总大小
+        """
+        return super(Handler, self).send(data)
+
     def get(self, header=None, timeout=0):
         """
-        receive a whole package from client
+        receive a whole package from client  获得一个来自客户端的数据包
 
-        :param header: bytes, package header to get the specified package
-        :param timeout: int (default: 0), timeout for not
-        receiving data from client
-        :return: bytes, depacked data
+        :param header: bytes, package header to get the specified package  包头部，可不选
+        :param timeout: int (default: 0), timeout for not receiving data from client  超时
+        :return: bytes, depacked data  解包后的数据
         """
 
         ret = None

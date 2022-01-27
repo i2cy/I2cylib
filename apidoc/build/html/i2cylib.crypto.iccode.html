@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>i2cylib.crypto.iccode package &mdash; I2cyLib 综合库 1.5.6 文档</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/translations.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> I2cyLib 综合库
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">i2cylib.crypto.iccode package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-i2cylib.crypto.iccode.iccode">i2cylib.crypto.iccode.iccode module</a></li>
+<li><a class="reference internal" href="#module-i2cylib.crypto.iccode">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">I2cyLib 综合库</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>i2cylib.crypto.iccode package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/i2cylib.crypto.iccode.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="i2cylib-crypto-iccode-package">
+<h1>i2cylib.crypto.iccode package<a class="headerlink" href="#i2cylib-crypto-iccode-package" title="永久链接至标题"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="永久链接至标题"></a></h2>
+</section>
+<section id="module-i2cylib.crypto.iccode.iccode">
+<span id="i2cylib-crypto-iccode-iccode-module"></span><h2>i2cylib.crypto.iccode.iccode module<a class="headerlink" href="#module-i2cylib.crypto.iccode.iccode" title="永久链接至标题"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="i2cylib.crypto.iccode.iccode.Iccode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">i2cylib.crypto.iccode.iccode.</span></span><span class="sig-name descname"><span class="pre">Iccode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fingerprint_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#i2cylib.crypto.iccode.iccode.Iccode" title="永久链接至目标"></a></dt>
+<dd><p>基类：<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="i2cylib.crypto.iccode.iccode.Iccode.decode">
+<span class="sig-name descname"><span class="pre">decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#i2cylib.crypto.iccode.iccode.Iccode.decode" title="永久链接至目标"></a></dt>
+<dd><p>decode data with buffer and base key</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><p><strong>data</strong> – bytes, length of 1024*n is the best</p>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>bytes, decoded bytes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="i2cylib.crypto.iccode.iccode.Iccode.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#i2cylib.crypto.iccode.iccode.Iccode.encode" title="永久链接至目标"></a></dt>
+<dd><p>encode data with buffer and base key</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><p><strong>data</strong> – bytes, length of 1024*n is the best</p>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>bytes, encoded bytes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="i2cylib.crypto.iccode.iccode.Iccode.generate_key">
+<span class="sig-name descname"><span class="pre">generate_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#i2cylib.crypto.iccode.iccode.Iccode.generate_key" title="永久链接至目标"></a></dt>
+<dd><p>generate a sha512 key</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><p><strong>key</strong> – bytes</p>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>bytes, 1024 bytes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="i2cylib.crypto.iccode.iccode.Iccode.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#i2cylib.crypto.iccode.iccode.Iccode.reset" title="永久链接至目标"></a></dt>
+<dd><p>reset coder sum</p>
+<dl class="field-list simple">
+<dt class="field-odd">返回</dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="i2cylib.crypto.iccode.iccode.Iccode.sign_key">
+<span class="sig-name descname"><span class="pre">sign_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#i2cylib.crypto.iccode.iccode.Iccode.sign_key" title="永久链接至目标"></a></dt>
+<dd><p>generate a fingerprint from given key</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><p><strong>key</strong> – np.ndarray (or bytes)</p>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>np.ndarray, length 1024 bytes</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-i2cylib.crypto.iccode">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-i2cylib.crypto.iccode" title="永久链接至标题"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2022, Icy Cloud.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

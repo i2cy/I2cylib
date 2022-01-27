@@ -8,7 +8,7 @@
 import threading
 import time
 import socket
-from i2cylib.network.I2TCP_protocol.I2TCP_client import I2TCPclient
+from i2cylib.network.i2tcp_basic.base_client import I2TCPclient
 from i2cylib.utils.logger import Logger
 
 
@@ -18,14 +18,14 @@ class Client(I2TCPclient):
                  watchdog_timeout=15, logger=Logger(),
                  max_buffer_size=100):
         """
-        I2TCPclient Class
+        I2TCPclient 客户端通讯类
 
-        :param hostname: str, server address
-        :param port: int, server port
-        :param key: str, dynamic key for authentication
-        :param watchdog_timeout: int, watchdog timeout
-        :param logger: Logger, client log output object
-        :param max_buffer_size: int, max pakcage buffer size
+        :param hostname: str, server address 服务器地址
+        :param port: int, server port 服务器端口
+        :param key: str, dynamic key for authentication 对称动态密钥
+        :param watchdog_timeout: int, watchdog timeout 守护线程超时时间
+        :param logger: Logger, client log output object 日志器（来自于i2cylib.utils.logger.logger.Logger）
+        :param max_buffer_size: int, max pakcage buffer size 最大包缓冲池大小（单位：个）
         """
         super(Client, self).__init__(hostname, port=port, key=key,
                                      watchdog_timeout=watchdog_timeout,
@@ -75,13 +75,39 @@ class Client(I2TCPclient):
         self.threads.update({"receiver": False})
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
 
+    def reset(self):
+        """
+        reset I2TCP connection (close connection)  关闭连接
+
+        :return: None
+        """
+        super(Client, self).reset()
+
+    def connect(self, timeout=10):
+        """
+        connect to server  连接到I2TCP服务器
+
+        :param timeout: int, connection timeout 设置超时时间
+        :return: bool, connection status 连接状态（成功为True）
+        """
+        super(Client, self).connect(timeout=timeout)
+
+    def send(self, data):
+        """
+        send data to server 向I2TCP服务器发送数据
+
+        :param data: bytes, data to send (smaller than 16MB) 待发送的数据
+        :return: int, total amount of bytes that has been sent 发送出去的总大小
+        """
+        return super(Client, self).send(data)
+
     def get(self, header=None, timeout=0):
         """
-        get the latest package with specified header
+        get one package with specified header(or not)  从缓冲池中获取数据包（可指定包头部进行筛选）
 
-        :param timeout: int, timeout for receiving specified header
-        :param header: bytes, package header
-        :return: bytes, depacked data
+        :param timeout: int, timeout for receiving specified header  超时时间
+        :param header: bytes, package header  包头部，可不指定
+        :return: bytes, depacked data  解析后的包数据（不含协议层）
         """
 
         ret = None

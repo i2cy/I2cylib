@@ -5,7 +5,7 @@
 # Created on: 2021/4/28
 import sys
 
-from i2cylib.network.I2TCP_protocol.I2TCP_server import *
+from i2cylib.network.i2tcp_basic.base_server import *
 from i2cylib.crypto.iccode import *
 from i2cylib.utils.stdout import *
 from i2cylib.utils.logger import *
