@@ -7,8 +7,7 @@
 
 import threading
 import time
-import socket
-from i2cylib.network.i2tcp_basic.base_client import I2TCPclient
+from i2cylib.network.i2tcp_basic import I2TCPclient
 from i2cylib.utils.logger import Logger
 
 
@@ -83,15 +82,6 @@ class Client(I2TCPclient):
         """
         super(Client, self).reset()
 
-    def connect(self, timeout=10):
-        """
-        connect to server  连接到I2TCP服务器
-
-        :param timeout: int, connection timeout 设置超时时间
-        :return: bool, connection status 连接状态（成功为True）
-        """
-        super(Client, self).connect(timeout=timeout)
-
     def send(self, data):
         """
         send data to server 向I2TCP服务器发送数据
@@ -129,38 +119,15 @@ class Client(I2TCPclient):
 
     def connect(self, timeout=10):
         """
-        connect to server
+        connect to server  连接到I2TCP服务器
 
-        :return: bool, connection status
+        :param timeout: int, connection timeout 设置超时时间
+        :return: bool, connection status 连接状态（成功为True）
         """
 
-        if self.connected:
-            self.logger.ERROR("{} server has already connected".format(self.log_header))
-            return self.connected
-        clt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        clt.settimeout(timeout)
-        try:
-            clt.connect(self.address)
-        except Exception as err:
-            self.logger.ERROR("{} failed to connect to server, {}".format(self.log_header, err))
-            return self.connected
-        try:
-            dynamic_key = self.keygen.keygen()
-            clt.sendall(dynamic_key)
-            feedback = clt.recv(65536)
-            if feedback != b"OK":
-                raise Exception("invalid key or invalid server")
-            self.clt = clt
-            self.live = True
-            self.connected = True
-            self._start()
-        except Exception as err:
-            self.logger.ERROR("{} failed to auth, {}".format(self.log_header, err))
-            return self.connected
-        self.logger.INFO("{} server {}:{} connected".format(self.log_header,
-                                                            self.address[0],
-                                                            self.address[1]))
+        ret = super(Client, self).connect(timeout=timeout)
 
-        threading.Thread(target=self._receiver_thread).start()
+        if ret:
+            threading.Thread(target=self._receiver_thread).start()
 
-        return self.connected
+        return ret

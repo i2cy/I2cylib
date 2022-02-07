@@ -6,8 +6,9 @@
 # Created on: 2021/9/29
 
 
-from i2cylib.network.i2tcp_basic.base_server import *
-from i2cylib.utils.logger.logger import Logger
+import time
+from i2cylib.network.i2tcp_basic import I2TCPserver, I2TCPhandler
+from i2cylib.utils.logger import Logger
 
 
 class Server(I2TCPserver):

@@ -3,8 +3,8 @@
 # Author: i2cy(i2cy@outlook.com)
 # Filename: i2cydbclient
 # Created on: 2021/5/29
-import json
 
+import json
 from i2cylib.database.I2DB.i2cydbserver import ModLogger
 from i2cylib.utils.logger import *
 from i2cylib.utils.stdout import *
@@ -248,7 +248,7 @@ class SqliteTableCursor:
         self.upper = upper
         self.database = self.upper.database
         self.encrypt_key = self.upper.encrypt_key
-        self.logger = self.upper.logger
+        self.logger = self.upper.Logger
         self.name = table_name
         self.table_info = None
         self.length = 0

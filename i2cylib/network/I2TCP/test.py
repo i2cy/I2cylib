@@ -7,7 +7,7 @@
 
 from client import Client
 from server import Server, Handler
-from i2cylib.utils.logger.logger import Logger
+from i2cylib.utils.logger import Logger
 from hashlib import sha512
 import random
 import time

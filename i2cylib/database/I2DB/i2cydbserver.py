@@ -3,8 +3,8 @@
 # Author: i2cy(i2cy@outlook.com)
 # Filename: i2cydbserver
 # Created on: 2021/4/28
-import sys
 
+import sys
 from i2cylib.network.i2tcp_basic.base_server import *
 from i2cylib.crypto.iccode import *
 from i2cylib.utils.stdout import *
@@ -78,7 +78,7 @@ def hander(con):
     head = "[handler] [{}]".format(con.addr)
     if not isinstance(MODLOGGER, ModLogger):
         echo = Echo()
-        log = logger()
+        log = Logger()
         MODLOGGER = ModLogger(logger=log, echo=echo)
     if not isinstance(DATABASE, SqliteDB):
         MODLOGGER.CRITICAL("{} database is not ready".format(head))

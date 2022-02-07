@@ -6,194 +6,20 @@
 
 import socket
 import threading
-import sys
 import time
 import uuid
-from hashlib import md5
+from hashlib import md5, sha256
+from i2cylib.crypto.keygen import DynKey
+from i2cylib.crypto.iccode import Iccode
+from i2cylib.utils.logger import Logger
 
-VERSION = "1.2"
-
-
-class logger:  # Logger
-    def __init__(self, filename=None, line_end="lf",
-                 date_format="%Y-%m-%d %H:%M:%S", level="DEBUG", echo=True):
-        self.level = 1
-        self.echo = echo
-        if level == "DEBUG":
-            self.level = 0
-        elif level == "INFO":
-            self.level = 1
-        elif level == "WARNING":
-            self.level = 2
-        elif level == "ERROR":
-            self.level = 3
-        elif level == "CRITICAL":
-            self.level = 4
-        else:
-            raise Exception("logger level: DEBUG, INFO, WARNING, ERROR, CRITICAL")
-        try:
-            temp = time.strftime(date_format)
-            del temp
-        except Exception as err:
-            raise Exception("Failed to set date formant, result: " + str(err))
-        self.date_format = date_format
-        if line_end == "lf":
-            self.line_end = "\n"
-        elif line_end == "crlf":
-            self.line_end = "\r\n"
-        else:
-            raise Exception("Unknow line end character(s): \"" + line_end + "\"")
-        self.filename = filename
-        if filename == None:
-            return
-        try:
-            log_file = open(filename, "w")
-            log_file.close()
-        except Exception as err:
-            raise Exception("Can't open file: \"" + filename + "\", result: " + str(err))
-
-    def DEBUG(self, msg):
-        if self.level > 0:
-            return
-        infos = "[" + time.strftime(self.date_format) + "] [DBUG] " + msg + self.line_end
-        if self.echo:
-            sys.stdout.write(infos)
-            sys.stdout.flush()
-        if self.filename == None:
-            return
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
-        return infos
-
-    def INFO(self, msg):
-        if self.level > 1:
-            return
-        infos = "[" + time.strftime(self.date_format) + "] [INFO] " + msg + self.line_end
-        if self.echo:
-            sys.stdout.write(infos)
-            sys.stdout.flush()
-        if self.filename == None:
-            return
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
-        return infos
-
-    def WARNING(self, msg):
-        if self.level > 2:
-            return
-        infos = "[" + time.strftime(self.date_format) + "] [WARN] " + msg + self.line_end
-        if self.echo:
-            sys.stdout.write(infos)
-            sys.stdout.flush()
-        if self.filename == None:
-            return
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
-        return infos
-
-    def ERROR(self, msg):
-        if self.level > 3:
-            return
-        infos = "[" + time.strftime(self.date_format) + "] [EROR] " + msg + self.line_end
-        if self.echo:
-            sys.stdout.write(infos)
-            sys.stdout.flush()
-        if self.filename == None:
-            return
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
-        return infos
-
-    def CRITICAL(self, msg):
-        infos = "[" + time.strftime(self.date_format) + "] [CRIT] " + msg + self.line_end
-        if self.echo:
-            sys.stdout.write(infos)
-            sys.stdout.flush()
-        if self.filename == None:
-            return
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
-        return infos
-
-
-class dynKey:  # 64-Bits dynamic key generator/matcher
-
-    def __init__(self, key, flush_times=1, multiplier=0.01):
-        if isinstance(key, str):
-            key = key.encode()
-        elif isinstance(key, bytes):
-            pass
-        else:
-            raise Exception("private key must be String or Bytes")
-        self.key = key
-        self.multiplier = multiplier
-        if flush_times <= 0:
-            flush_times = 1
-        self.flush_time = flush_times
-
-    def keygen(self, offset=0):  # 64-Bits dynamic key generator
-        time_unit = int(time.time() * self.multiplier) + int(offset)
-        time_unit = str(time_unit).encode()
-        time_unit = md5(time_unit).digest()
-        key_unit = md5(self.key).digest()
-        sub_key_unit = time_unit + key_unit
-
-        for i in range(self.flush_time):
-            sub_key_unit = md5(sub_key_unit).digest()[::-1]
-            conv_core = [int((num + 1 * self.multiplier) % 255 + 1) for num in sub_key_unit[:3]]
-            conv_res = []
-            for i2, ele in enumerate(sub_key_unit[3:-2]):
-                conv_res_temp = 0
-                for c in range(3):
-                    conv_res_temp += sub_key_unit[3 + i2 + c] * conv_core[c]
-                conv_res.append(int(conv_res_temp % 256))
-            sub_key_unit = md5(sub_key_unit[:3] + bytes(conv_core)).digest()[::-1]
-            sub_key_unit += md5(sub_key_unit + bytes(conv_res)).digest()
-            sub_key_unit += md5(bytes(conv_res)).digest()
-            sub_key_unit += md5(bytes(conv_res) + self.key).digest()
-            sub_key_unit += key_unit
-
-        conv_cores = [[time_unit[i2] for i2 in range(4 * i, 4 * i + 4)]
-                      for i in range(4)]
-
-        for i, ele in enumerate(conv_cores):
-            ele.insert(2,
-                       1 * self.multiplier + (key_unit[i] + key_unit[i + 4] + key_unit[i + 8] + key_unit[i + 12]) // 4)
-
-        final_key = sub_key_unit
-
-        for i in range(4):
-            conv_core = conv_cores[i]
-            conv_res = []
-            for i2, ele in enumerate(final_key[:-4]):
-                conv_res_temp = 0
-                for c in range(5):
-                    conv_res_temp += final_key[i2 + c] * conv_core[c]
-                conv_res.append(int(conv_res_temp % 256))
-            final_key = bytes(conv_res)
-
-        return final_key
-
-    def keymatch(self, key):  # Live key matcher
-        lock_1 = self.keygen(-1)
-        lock_2 = self.keygen(0)
-        lock_3 = self.keygen(1)
-        lock = [lock_1, lock_2, lock_3]
-        if key in lock:
-            return True
-        else:
-            return False
+VERSION = "1.3"
 
 
 class I2TCPclient:
 
     def __init__(self, hostname, port=27631, key=b"basic",
-                 watchdog_timeout=15, logger=logger()):
+                 watchdog_timeout=15, logger=Logger()):
         """
         I2TCPclient Class
 
@@ -205,7 +31,8 @@ class I2TCPclient:
         """
         self.address = (hostname, port)
         self.clt = None
-        self.keygen = dynKey(key)
+        self.keygen = DynKey(key)
+        self.key = key
         self.live = False
         self.log_header = "[I2TCP]"
         self.logger = logger
@@ -396,11 +223,25 @@ class I2TCPclient:
             self.logger.ERROR("{} failed to connect to server, {}".format(self.log_header, err))
             return self.connected
         try:
+            ts = time.time()
+            rand_num = b""
+            while len(rand_num) != 64:
+                rand_num += clt.recv(64 - len(rand_num))
+                if time.time() - ts > timeout:
+                    raise Exception("timeout while receiving random data from server")
+
+            key_sha256 = sha256()
+            key_sha256.update(self.key)
+            mix_sha256 = sha256()
+            mix_sha256.update(key_sha256.digest() + rand_num)
+            mix_coder = Iccode(mix_sha256.digest(), fingerprint_level=6)
             dynamic_key = self.keygen.keygen()
+            dynamic_key = mix_coder.encode(dynamic_key)
+
             clt.sendall(dynamic_key)
             feedback = clt.recv(65536)
-            if feedback != b"OK":
-                raise Exception("invalid key or invalid server")
+            if feedback != self.version:
+                raise Exception("invalid key or invalid server, feedback: {}".format(feedback))
             self.clt = clt
             self.live = True
             self.connected = True
@@ -507,11 +348,11 @@ def receive_loop_test(clt):
 
 def test():
     test_hostname = "i2cy.tech"
-    clt = I2TCPclient(test_hostname, logger=logger(filename="client_testrun.log"))
+    clt = I2TCPclient(test_hostname, logger=Logger(filename="client_testrun.log"))
     if not clt.connect():
         print("trying to connect to local test server")
         clt.reset()
-        clt = I2TCPclient("localhost", logger=logger(filename="client_testrun.log"))
+        clt = I2TCPclient("localhost", logger=Logger(filename="client_testrun.log"))
         clt.connect()
     gtc = ""
     for i in range(3):

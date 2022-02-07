@@ -4,3 +4,6 @@
 # Project: I2cylib
 # Filename: __init__
 # Created on: 2021/9/29
+
+from .client import *
+from .server import *
