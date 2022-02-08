@@ -14,7 +14,7 @@ from i2cylib.utils.logger import Logger
 class Server(I2TCPserver):
 
     def __init__(self, key=b"I2TCPbasicKey", port=24678,
-                 max_con=20, logger=Logger()):
+                 max_con=20, logger=None):
         """
         I2TCP server class  I2TCP服务端类
 

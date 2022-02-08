@@ -14,7 +14,7 @@ from i2cylib.utils.logger import Logger
 class Client(I2TCPclient):
 
     def __init__(self, hostname, port=24678, key=b"I2TCPbasicKey",
-                 watchdog_timeout=15, logger=Logger(),
+                 watchdog_timeout=15, logger=None,
                  max_buffer_size=100):
         """
         I2TCPclient 客户端通讯类
