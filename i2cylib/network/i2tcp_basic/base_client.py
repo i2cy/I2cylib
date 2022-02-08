@@ -19,7 +19,7 @@ VERSION = "1.3"
 class I2TCPclient:
 
     def __init__(self, hostname, port=27631, key=b"basic",
-                 watchdog_timeout=15, logger=Logger()):
+                 watchdog_timeout=15, logger=None):
         """
         I2TCPclient Class
 
@@ -35,6 +35,10 @@ class I2TCPclient:
         self.key = key
         self.live = False
         self.log_header = "[I2TCP]"
+
+        if not isinstance(logger, Logger):
+            logger = Logger()
+
         self.logger = logger
         self.version = VERSION.encode()
         self.busy = False
