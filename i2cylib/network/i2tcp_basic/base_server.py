@@ -428,7 +428,7 @@ class I2TCPhandler:
 
     def _auth(self):
         """
-        authenticate sequence for incoming connection
+        authentication sequence for incoming connection
 
         :return: bool, authentication status
         """

@@ -1,0 +1,5 @@
+[2022-02-08 18:52:08] [DBUG] [I2TCP] [mainloop] thread started
+[2022-02-08 18:52:08] [INFO] [I2TCP] server started at 0.0.0.0:27631
+[2022-02-08 18:53:26] [INFO] [I2TCP] new connection 127.0.0.1:10895 coming in
+[2022-02-08 18:53:26] [DBUG] [I2TCP] [127.0.0.1:10895] connected
+[2022-02-08 18:53:46] [WARN] [I2TCP] [127.0.0.1:10895] authentication process failure, timed out
