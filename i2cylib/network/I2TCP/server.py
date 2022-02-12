@@ -166,10 +166,11 @@ class Handler(I2TCPhandler):
             assert isinstance(self.coder_depack, Iccode)
             while self.flag_depack_busy and self.live:
                 time.sleep(0.0001)
-            self.flag_depack_busy = True
-            self.coder_depack.reset()
-            data = self.coder_depack.decode(data)
-            self.flag_depack_busy = False
+            if data:
+                self.flag_depack_busy = True
+                self.coder_depack.reset()
+                data = self.coder_depack.decode(data)
+                self.flag_depack_busy = False
 
         return data
 
@@ -211,7 +212,6 @@ class Handler(I2TCPhandler):
 
         :return: None
         """
-        print(self.threads)
         super(Handler, self).kill()
 
     def send(self, data):

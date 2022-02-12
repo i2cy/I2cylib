@@ -113,6 +113,17 @@ class Client(I2TCPclient):
 
         while self.live:
             package = self.recv(False)
+
+            if self.flag_secured_connection_built:  # 安全连接解密
+                assert isinstance(self.coder_depack, Iccode)
+                while self.flag_depack_busy and self.live:
+                    time.sleep(0.0001)
+                if package:
+                    self.flag_depack_busy = True
+                    self.coder_depack.reset()
+                    package = self.coder_depack.decode(package)
+                    self.flag_depack_busy = False
+
             if package is not None:
                 self.package_buffer.append(package)
 
@@ -134,6 +145,13 @@ class Client(I2TCPclient):
         :return: None
         """
         super(Client, self).reset()
+        self.public_key = None
+        self.coder_pack = None
+        self.coder_depack = None
+
+        self.flag_pack_busy = False
+        self.flag_depack_busy = False
+        self.flag_secured_connection_built = False
 
     def send(self, data):
         """
