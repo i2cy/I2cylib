@@ -72,7 +72,8 @@ class Server(I2TCPserver):
                     break
 
         except Exception as err:
-            self.logger.ERROR("{} {} mainloop error, {}".format(self.log_header, local_header, err))
+            if self.live:
+                self.logger.ERROR("{} {} mainloop error, {}".format(self.log_header, local_header, err))
 
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
         self.threads.update({"mainloop": False})
@@ -158,39 +159,19 @@ class Handler(I2TCPhandler):
             paks.append(pak)
         return paks
 
-    def _depacker(self, pak_data):
-        """
-        【保留】 depack packed data to normal data format
+    def _recv(self):
+        data = super(Handler, self)._recv()
 
-        :param pak_data: bytes, packed data
-        :return: bytes, data
-        """
+        if self.flag_secured_connection_built:  # 安全连接解密
+            assert isinstance(self.coder_depack, Iccode)
+            while self.flag_depack_busy and self.live:
+                time.sleep(0.0001)
+            self.flag_depack_busy = True
+            self.coder_depack.reset()
+            data = self.coder_depack.decode(data)
+            self.flag_depack_busy = False
 
-        pak_type = pak_data[0]
-        header_unit = self.version + self.keygen.key
-        if pak_type == ord("H"):
-            ret = None
-        elif pak_type == ord("A"):
-            ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
-                   "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
-                   "header_md5": pak_data[6:9],
-                   "data": pak_data[9:]}
-            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
-            if header_md5 != ret["header_md5"]:
-                ret = None
-
-            if self.flag_secured_connection_built:  # 安全连接解密
-                assert isinstance(self.coder_depack, Iccode)
-                while self.flag_depack_busy:
-                    time.sleep(0.0001)
-                self.flag_depack_busy = True
-                self.coder_depack.reset()
-                ret["data"] = self.coder_depack.decode(ret["data"])
-                self.flag_depack_busy = False
-
-        else:
-            ret = None
-        return ret
+        return data
 
     def _auth(self):
         ret = super(Handler, self)._auth()
@@ -213,8 +194,8 @@ class Handler(I2TCPhandler):
                 self.logger.ERROR("{} failed to decrypt session key from client, {}".format(self.log_header, err))
                 return False
             self.logger.DEBUG("{} session key received: {}".format(self.log_header, session_key))
-            self.coder_pack = Iccode(session_key)
-            self.coder_depack = Iccode(session_key)
+            self.coder_pack = Iccode(session_key, fingerprint_level=3)
+            self.coder_depack = Iccode(session_key, fingerprint_level=3)
             self.logger.DEBUG("{} secured connection built".format(self.log_header))
 
             self.flag_secured_connection_built = True
@@ -230,6 +211,7 @@ class Handler(I2TCPhandler):
 
         :return: None
         """
+        print(self.threads)
         super(Handler, self).kill()
 
     def send(self, data):

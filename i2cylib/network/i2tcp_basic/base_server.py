@@ -135,7 +135,8 @@ class I2TCPserver:
                     break
 
         except Exception as err:
-            self.logger.ERROR("{} {} mainloop error, {}".format(self.log_header, local_header, err))
+            if self.live:
+                self.logger.ERROR("{} {} mainloop error, {}".format(self.log_header, local_header, err))
 
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
         self.threads.update({"mainloop": False})
@@ -359,7 +360,8 @@ class I2TCPhandler:
                     self.package_buffer.append(pak)
 
         except Exception as err:
-            self.logger.ERROR("{} {} error while running, {}".format(self.log_header, local_header, err))
+            if self.live:
+                self.logger.ERROR("{} {} error while running, {}".format(self.log_header, local_header, err))
 
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
         self.threads.update({"receiver": False})
@@ -553,7 +555,7 @@ class I2TCPhandler:
             time.sleep(0.5)
             tick += 1
             if tick > 30:
-                self.logger.ERROR("{} failed to kill handler thread(s), timeout")
+                self.logger.ERROR("{} failed to kill handler thread(s), timeout".format(self.log_header))
                 break
 
     def send(self, data):
@@ -578,7 +580,8 @@ class I2TCPhandler:
                 sent += len(i)
                 self._feed_watchdog()
         except Exception as err:
-            self.logger.ERROR("{} failed to send data, {}".format(self.log_header, err))
+            if self.live:
+                self.logger.ERROR("{} failed to send data, {}".format(self.log_header, err))
 
         self.busy = False
 

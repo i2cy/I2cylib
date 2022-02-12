@@ -131,7 +131,8 @@ class I2TCPclient:
                 time.sleep(0.5)
                 tick += 1
         except Exception as err:
-            self.logger.ERROR("{} {} heartbeat error, {}".format(self.log_header, local_header, err))
+            if self.live:
+                self.logger.ERROR("{} {} heartbeat error, {}".format(self.log_header, local_header, err))
 
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
         self.threads.update({"heartbeat": False})
@@ -166,7 +167,8 @@ class I2TCPclient:
                 tick += 1
                 self.watchdog_waitting += 1
         except Exception as err:
-            self.logger.ERROR("{} {} watchdog error, {}".format(self.log_header, local_header, err))
+            if self.live:
+                self.logger.ERROR("{} {} watchdog error, {}".format(self.log_header, local_header, err))
 
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
         self.threads.update({"watchdog": False})
@@ -330,7 +332,7 @@ class I2TCPclient:
                     data += self.clt.recv(ret["package_length"] - length)
                 all_data += data
         except Exception as err:
-            if exception:
+            if exception and self.live:
                 self.logger.ERROR("{} failed to receive message, {}".format(self.log_header, err))
             all_data = None
 

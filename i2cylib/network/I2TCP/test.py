@@ -22,7 +22,7 @@ def massive_send(clt, data):
 
 if __name__ == '__main__':
     logger = Logger()
-    srv = Server(port=24678, key=b"test", logger=logger, secured_connection=False)
+    srv = Server(port=24678, key=b"test", logger=logger, secured_connection=True)
     clt = Client(port=24678, hostname="127.0.0.1", key=b"test", logger=logger)
 
     srv.start()
@@ -62,11 +62,11 @@ if __name__ == '__main__':
     data = data * 4
     time_spend_avg = 0
 
-    for i in range(200):
+    for i in range(20):
         ts = time.time()
         clt.send(data)
         rs = time.time() - ts
-        time_spend_avg += rs / 200
+        time_spend_avg += rs / 20
 
     clt.reset()
     srv.kill()

@@ -1,0 +1,15 @@
+[2022-02-12 21:14:43] [DBUG] [I2TCP] [heartbeat] thread started
+[2022-02-12 21:14:43] [INFO] [I2TCP] server localhost:27631 connected
+[2022-02-12 21:14:43] [DBUG] [I2TCP] [watchdog] thread started
+[2022-02-12 21:14:44] [DBUG] [I2TCP] receiving data of total length 9061741
+[2022-02-12 21:14:44] [DBUG] [I2TCP] receiving data of total length 22006
+[2022-02-12 21:14:45] [DBUG] [I2TCP] receiving data of total length 9061741
+[2022-02-12 21:14:46] [DBUG] [I2TCP] receiving data of total length 22006
+[2022-02-12 21:14:46] [DBUG] [I2TCP] receiving data of total length 9061741
+[2022-02-12 21:14:47] [DBUG] [I2TCP] receiving data of total length 22006
+[2022-02-12 21:14:47] [DBUG] [I2TCP] receiving data of total length 22006
+[2022-02-12 21:14:48] [DBUG] [I2TCP] receiving data of total length 22006
+[2022-02-12 21:14:48] [DBUG] [I2TCP] receiving data of total length 22006
+[2022-02-12 21:14:53] [EROR] [I2TCP] failed to receive message, [WinError 10038] 在一个非套接字上尝试了一个操作。
+[2022-02-12 21:14:53] [DBUG] [I2TCP] [watchdog] thread stopped
+[2022-02-12 21:14:53] [DBUG] [I2TCP] [heartbeat] thread stopped
