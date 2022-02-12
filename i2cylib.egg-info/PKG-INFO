@@ -1,12 +1,13 @@
 Metadata-Version: 2.1
 Name: i2cylib
-Version: 1.7.1
+Version: 1.8.0
 Summary: A Python library contains a lot of useful functions and tools
 Home-page: https://github.com/i2cy/i2cylib
 Author: I2cy Cloud
 Author-email: i2cy@outlook.com
 License: UNKNOWN
 Project-URL: Bug Tracker, https://github.com/i2cy/i2cylib/issues
+Project-URL: Source Code, https://github.com/i2cy/i2cylib
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License

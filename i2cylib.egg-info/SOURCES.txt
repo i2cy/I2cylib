@@ -17,6 +17,8 @@ i2cylib/crypto/iccode/iccode.py
 i2cylib/crypto/keygen/__init__.py
 i2cylib/crypto/keygen/dynkey.py
 i2cylib/crypto/keygen/time_key.py
+i2cylib/crypto/utils/__init__.py
+i2cylib/crypto/utils/operators.py
 i2cylib/database/__init__.py
 i2cylib/database/I2DB/__init__.py
 i2cylib/database/I2DB/i2cydbclient.py
