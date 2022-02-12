@@ -7,14 +7,19 @@
 
 
 import time
+import rsa
+from hashlib import md5
 from i2cylib.network.i2tcp_basic import I2TCPserver, I2TCPhandler
-from i2cylib.utils.logger import Logger
+from i2cylib.crypto.iccode import Iccode
+
+
+VERSION = "2.0"
 
 
 class Server(I2TCPserver):
 
     def __init__(self, key=b"I2TCPbasicKey", port=24678,
-                 max_con=20, logger=None):
+                 max_con=20, logger=None, secured_connection=True):
         """
         I2TCP server class  I2TCP服务端类
 
@@ -23,9 +28,22 @@ class Server(I2TCPserver):
         :param max_con: int, max TCP connection(s) that allowed
                         to be accept at the same time  最大同时接受的连接数
         :param logger: Logger, server log output object  日志器（来自于i2cylib.utils.logger.logger.Logger）
+        :param secured_connection: bool, enable encryption in connection
         """
         super(Server, self).__init__(key=key, port=port, max_con=max_con,
                                      logger=logger)
+
+        self.version = VERSION.encode()
+
+        self.public_key = None
+        self.private_key = None
+        self.secured_connection = secured_connection
+
+        if secured_connection:
+            self.logger.INFO("{} generating secured session RSA keychain".format(self.log_header))
+            keys = rsa.newkeys(1024)
+            self.private_key = keys[1]
+            self.public_key = keys[0]
 
     def _mainloop_thread(self):
         """
@@ -66,7 +84,7 @@ class Server(I2TCPserver):
         :param port: int or None, leave it empty to use self.port  选择端口，默认self.port
         :return: None
         """
-        super(Server, self).start(port=port)
+        return super(Server, self).start(port=port)
     
     def kill(self):
         """
@@ -74,7 +92,7 @@ class Server(I2TCPserver):
         
         :return: None
         """
-        super(Server, self).kill()
+        return super(Server, self).kill()
     
     def get_connection(self, wait=False):
         """
@@ -90,8 +108,121 @@ class Handler(I2TCPhandler):
 
     def __init__(self, srv, addr, parent, timeout=20,
                  buffer_max=256, watchdog_timeout=15, temp_dir="temp"):
-        super(Handler, self).__init__(srv, addr, parent, timeout=20,
-                                      buffer_max=256, watchdog_timeout=15, temp_dir="temp")
+
+        self.connection_timeout = timeout
+        self.public_key = None
+        self.coder_pack = None
+        self.coder_depack = None
+
+        self.flag_pack_busy = False
+        self.flag_depack_busy = False
+        self.flag_secured_connection_built = False
+
+        super(Handler, self).__init__(srv, addr, parent, timeout=timeout,
+                                      buffer_max=buffer_max, watchdog_timeout=watchdog_timeout,
+                                      temp_dir=temp_dir)
+
+    def _packager(self, data):
+        """
+        【保留】 pack data with I2TCP format
+
+        :param data: bytes
+        :return: List(bytes), packed data
+        """
+        offset = 0
+        paks = []
+        length = len(data)
+
+        if self.flag_secured_connection_built:  # 安全连接加密
+            assert isinstance(self.coder_pack, Iccode)
+            while self.flag_pack_busy:
+                time.sleep(0.0001)
+            self.flag_pack_busy = True
+            self.coder_pack.reset()
+            data = self.coder_pack.encode(data)
+            self.flag_pack_busy = False
+
+        left = length
+        header_unit = self.version + self.keygen.key
+        while left > 0:
+            pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
+            if left < 60000:
+                left = 0
+            else:
+                left -= 60000
+            pak_length = length - left - offset
+            pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
+            pak += md5(pak + header_unit).digest()[:3]
+            pak += data[offset:length - left]
+            offset = length - left
+            paks.append(pak)
+        return paks
+
+    def _depacker(self, pak_data):
+        """
+        【保留】 depack packed data to normal data format
+
+        :param pak_data: bytes, packed data
+        :return: bytes, data
+        """
+
+        pak_type = pak_data[0]
+        header_unit = self.version + self.keygen.key
+        if pak_type == ord("H"):
+            ret = None
+        elif pak_type == ord("A"):
+            ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
+                   "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
+                   "header_md5": pak_data[6:9],
+                   "data": pak_data[9:]}
+            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
+            if header_md5 != ret["header_md5"]:
+                ret = None
+
+            if self.flag_secured_connection_built:  # 安全连接解密
+                assert isinstance(self.coder_depack, Iccode)
+                while self.flag_depack_busy:
+                    time.sleep(0.0001)
+                self.flag_depack_busy = True
+                self.coder_depack.reset()
+                ret["data"] = self.coder_depack.decode(ret["data"])
+                self.flag_depack_busy = False
+
+        else:
+            ret = None
+        return ret
+
+    def _auth(self):
+        ret = super(Handler, self)._auth()
+
+        if not ret:
+            return ret
+        else:
+            self._start()
+
+        if self.parent.secured_connection:
+            self.send(b"SECURED_SESSION_KEY_REQUIRED\a" + self.parent.public_key.save_pkcs1("PEM"))
+            session_key = self.get(timeout=self.connection_timeout)
+            if session_key is None:
+                self.logger.ERROR("{} failed to create secured session, connection denied".format(self.log_header))
+                return False
+
+            try:
+                session_key = rsa.decrypt(session_key, self.parent.private_key)
+            except Exception as err:
+                self.logger.ERROR("{} failed to decrypt session key from client, {}".format(self.log_header, err))
+                return False
+            self.logger.DEBUG("{} session key received: {}".format(self.log_header, session_key))
+            self.coder_pack = Iccode(session_key)
+            self.coder_depack = Iccode(session_key)
+            self.logger.DEBUG("{} secured connection built".format(self.log_header))
+
+            self.flag_secured_connection_built = True
+
+        else:
+            self.send(b"AUTHENTICATION_ONLY\a")
+
+        return ret
 
     def kill(self):
         """
@@ -130,7 +261,7 @@ class Handler(I2TCPhandler):
                         break
 
             if timeout:
-                time.sleep(0.002)
+                time.sleep(0.0001)
             elif timeout == 0 or (time.time() - t) > timeout:
                 break
 

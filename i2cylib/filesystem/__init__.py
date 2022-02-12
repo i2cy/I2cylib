@@ -4,4 +4,4 @@
 # Filename: __init__.py
 # Created on: 2021/3/6
 
-import i2cylib.filesystem.icfat64
+from .icfat64 import *

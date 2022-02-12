@@ -4,3 +4,5 @@
 # Project: I2cyLib
 # Filename: __init__
 # Created on: 2022/2/5
+
+from .pipe import *

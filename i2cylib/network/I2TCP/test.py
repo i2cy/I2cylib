@@ -22,7 +22,7 @@ def massive_send(clt, data):
 
 if __name__ == '__main__':
     logger = Logger()
-    srv = Server(port=24678, key=b"test", logger=logger)
+    srv = Server(port=24678, key=b"test", logger=logger, secured_connection=False)
     clt = Client(port=24678, hostname="127.0.0.1", key=b"test", logger=logger)
 
     srv.start()
@@ -30,7 +30,8 @@ if __name__ == '__main__':
 
     data = b""
 
-    for i in range(1024*32):
+    logger.INFO("[main] generating random data to send")
+    for i in range(1024*256):
         data += bytes((int(256*random.random()),))
 
     for i in range(16):
@@ -39,9 +40,11 @@ if __name__ == '__main__':
     hasher_1 = sha512()
     hasher_1.update(data)
 
-    srv_clt = srv.get_connection()
+    srv_clt = srv.get_connection(wait=True)
 
     assert isinstance(srv_clt, Handler)
+
+    time.sleep(2)
 
     data_recv_nohead = srv_clt.get(timeout=3)
     data_recv = srv_clt.get(b"A15", timeout=3)
@@ -56,9 +59,17 @@ if __name__ == '__main__':
     hasher_2 = sha512()
     hasher_2.update(data_recv)
 
-    logger.INFO("[main] data transition result: {}".format(hasher_2.digest() == hasher_1.digest()))
+    data = data * 4
+    time_spend_avg = 0
 
-    time.sleep(1)
+    for i in range(200):
+        ts = time.time()
+        clt.send(data)
+        rs = time.time() - ts
+        time_spend_avg += rs / 200
 
     clt.reset()
     srv.kill()
+
+    logger.INFO("[main] data transition result: {}".format(hasher_2.digest() == hasher_1.digest()))
+    logger.INFO("[main] speed test result: {:.4f} MB/s".format((len(data) / 1024 / 1024) / time_spend_avg))

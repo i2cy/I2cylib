@@ -5,3 +5,4 @@
 # Created on: 2021/3/6
 
 from .i2cydbserver import *
+from .i2cydbclient import *

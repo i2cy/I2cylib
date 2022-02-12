@@ -4,5 +4,5 @@
 # Filename: __init__.py
 # Created on: 2021/3/6
 
-import i2cylib.database.sqlite
-import i2cylib.database.I2DB
+from .I2DB import *
+from .sqlite import *

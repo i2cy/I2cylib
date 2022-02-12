@@ -4,5 +4,6 @@
 # Filename: __init__.py
 # Created on: 2021/3/6
 
-import i2cylib.crypto.iccode
-import i2cylib.crypto.keygen
+from .iccode import *
+from .keygen import *
+from .utils import *

@@ -261,6 +261,8 @@ class I2TCPhandler:
         self.buffer_max = buffer_max
         self.watchdog_timeout = watchdog_timeout * 2
         self.temp_dir = temp_dir
+
+        assert isinstance(parent, I2TCPserver)
         self.parent = parent
 
         self.mac_id = uuid.UUID(int=uuid.getnode()).bytes[-6:]
@@ -456,6 +458,9 @@ class I2TCPhandler:
             else:
                 self.logger.WARNING("{} unauthorized connection, key received: {}".format(self.log_header,
                                                                                           dynamic_key))
+            feedback = self.srv.recv(2)
+            if feedback != b"OK":
+                raise Exception("invalid feedback, {}".format(feedback))
 
         except Exception as err:
             self.logger.WARNING("{} authentication process failure, {}".format(self.log_header, err))
@@ -563,7 +568,7 @@ class I2TCPhandler:
         sent = 0
 
         while self.busy:
-            time.sleep(0.002)
+            time.sleep(0.0001)
 
         self.busy = True
 

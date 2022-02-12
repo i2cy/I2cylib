@@ -7,8 +7,13 @@
 
 import threading
 import time
+import rsa
+from hashlib import md5
 from i2cylib.network.i2tcp_basic import I2TCPclient
-from i2cylib.utils.logger import Logger
+from i2cylib.crypto.iccode import Iccode
+from i2cylib.utils import random_keygen
+
+VERSION = "2.0"
 
 
 class Client(I2TCPclient):
@@ -30,8 +35,90 @@ class Client(I2TCPclient):
                                      watchdog_timeout=watchdog_timeout,
                                      logger=logger)
 
+        self.connection_timeout = 10
+
         self.max_buffer = max_buffer_size
         self.package_buffer = []
+
+        self.public_key = None
+        self.coder_pack = None
+        self.coder_depack = None
+
+        self.flag_pack_busy = False
+        self.flag_depack_busy = False
+        self.flag_secured_connection_built = False
+
+        self.version = VERSION.encode()
+
+    def _packager(self, data):
+        """
+        【保留】 pack data with I2TCP format
+
+        :param data: bytes
+        :return: List(bytes), packed data
+        """
+        offset = 0
+        paks = []
+        length = len(data)
+
+        if self.flag_secured_connection_built:  # 安全连接加密
+            assert isinstance(self.coder_pack, Iccode)
+            while self.flag_pack_busy:
+                time.sleep(0.0001)
+            self.flag_pack_busy = True
+            self.coder_pack.reset()
+            data = self.coder_pack.encode(data)
+            self.flag_pack_busy = False
+
+        left = length
+        header_unit = self.version + self.keygen.key
+        while left > 0:
+            pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
+            if left < 60000:
+                left = 0
+            else:
+                left -= 60000
+            pak_length = length - left - offset
+            pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
+            pak += md5(pak + header_unit).digest()[:3]
+            pak += data[offset:length - left]
+            offset = length - left
+            paks.append(pak)
+        return paks
+
+    def _depacker(self, pak_data):
+        """
+        【保留】 depack packed data to normal data format
+
+        :param pak_data: bytes, packed data
+        :return: bytes, data
+        """
+
+        pak_type = pak_data[0]
+        header_unit = self.version + self.keygen.key
+        if pak_type == ord("H"):
+            ret = None
+        elif pak_type == ord("A"):
+            ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
+                   "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
+                   "header_md5": pak_data[6:9],
+                   "data": pak_data[9:]}
+            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
+            if header_md5 != ret["header_md5"]:
+                ret = None
+
+            if self.flag_secured_connection_built:  # 安全连接解密
+                assert isinstance(self.coder_depack, Iccode)
+                while self.flag_depack_busy:
+                    time.sleep(0.0001)
+                self.flag_depack_busy = True
+                self.coder_depack.reset()
+                ret["data"] = self.coder_depack.decode(ret["data"])
+                self.flag_depack_busy = False
+
+        else:
+            ret = None
+        return ret
 
     def _check_receiver(self):
         """
@@ -111,7 +198,7 @@ class Client(I2TCPclient):
                         break
 
             if timeout:
-                time.sleep(0.002)
+                time.sleep(0.0001)
             elif timeout == 0 or (time.time() - t) > timeout:
                 break
 
@@ -126,8 +213,55 @@ class Client(I2TCPclient):
         """
 
         ret = super(Client, self).connect(timeout=timeout)
+        self.connection_timeout = timeout
 
         if ret:
             threading.Thread(target=self._receiver_thread).start()
 
-        return ret
+        flag = self.get(timeout=self.connection_timeout)
+        if flag is None:
+            self.logger.ERROR("{} failed to build connection, flag didn't received".format(
+                self.log_header
+            ))
+            self.connected = False
+            return self.connected
+
+        flag = flag.split(b"\a")
+
+        if flag[0] == b"SECURED_SESSION_KEY_REQUIRED":
+            try:
+                self.public_key = rsa.PublicKey.load_pkcs1(flag[1])
+                self.logger.DEBUG("{} public rsa key received, \n{}".format(self.log_header, flag[1].decode()))
+            except Exception as err:
+                self.logger.ERROR("{} broken rsa key received, {}".format(self.log_header, flag[1]))
+                self.connected = False
+                return self.connected
+
+            try:
+                session_key = random_keygen(64)
+                self.coder_pack = Iccode(session_key)
+                self.coder_depack = Iccode(session_key)
+                self.logger.DEBUG("{} random session key generated: {}".format(self.log_header, session_key))
+                session_key = rsa.encrypt(session_key, self.public_key)
+
+                self.send(session_key)
+
+            except Exception as err:
+                self.logger.ERROR("{} error while sending session key to server, {}".format(
+                    self.log_header, err
+                ))
+                self.connected = False
+                return self.connected
+
+            self.logger.DEBUG("{} secured connection built".format(self.log_header))
+            self.flag_secured_connection_built = True
+
+        elif flag[0] == b"AUTHENTICATION_ONLY":
+            self.logger.DEBUG("{} connection built".format(self.log_header))
+
+        else:
+            self.logger.ERROR("{} failed to build connection, unexpected flag received, {}".format(
+                self.log_header, flag
+            ))
+            self.connected = False
+            return self.connected

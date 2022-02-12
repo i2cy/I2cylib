@@ -20,6 +20,7 @@ setuptools.setup(
     url="https://github.com/i2cy/i2cylib",
     project_urls={
         "Bug Tracker": "https://github.com/i2cy/i2cylib/issues",
+        "Source Code": "https://github.com/i2cy/i2cylib"
     },
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -28,7 +29,8 @@ setuptools.setup(
     ],
     install_requires=[
         'numpy',
-        'tqdm'
+        'tqdm',
+        'rsa'
     ],
     packages=setuptools.find_packages(),
     python_requires=">=3.6",

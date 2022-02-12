@@ -246,6 +246,7 @@ class I2TCPclient:
             feedback = clt.recv(65536)
             if feedback != self.version:
                 raise Exception("invalid key or invalid server, feedback: {}".format(feedback))
+            clt.sendall(b"OK")
             self.clt = clt
             self.live = True
             self.connected = True
@@ -273,7 +274,7 @@ class I2TCPclient:
         sent = 0
 
         while self.busy:
-            time.sleep(0.005)
+            time.sleep(0.0001)
 
         self.busy = True
 
