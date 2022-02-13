@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="i2cylib",  # Replace with your own username
-    version="1.8.1",
+    version="1.8.3",
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
     description="A Python library contains a lot of useful functions and tools",
@@ -21,7 +21,8 @@ setuptools.setup(
     url="https://github.com/i2cy/i2cylib",
     project_urls={
         "Bug Tracker": "https://github.com/i2cy/i2cylib/issues",
-        "Source Code": "https://github.com/i2cy/i2cylib"
+        "Source Code": "https://github.com/i2cy/i2cylib",
+        "Documentation": "https://github.com/i2cy/I2cylib/wiki/API-Document"
     },
     classifiers=[
         "Programming Language :: Python :: 3",
