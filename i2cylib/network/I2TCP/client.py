@@ -237,6 +237,14 @@ class Client(I2TCPclient):
                 self.connected = False
                 return self.connected
 
+            feedback = self.get(timeout=self.connection_timeout)
+            if feedback != b"CODER READY":
+                self.logger.ERROR("{} error while waiting ready signal from server".format(
+                    self.log_header
+                ))
+                self.connected = False
+                return self.connected
+
             self.logger.DEBUG("{} secured connection built".format(self.log_header))
             self.flag_secured_connection_built = True
 

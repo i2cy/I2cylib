@@ -198,6 +198,7 @@ class Handler(I2TCPhandler):
             self.coder_pack = Iccode(session_key, fingerprint_level=3)
             self.coder_depack = Iccode(session_key, fingerprint_level=3)
             self.logger.DEBUG("{} secured connection built".format(self.log_header))
+            self.send(b"CODER READY")
 
             self.flag_secured_connection_built = True
 
