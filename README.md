@@ -17,3 +17,6 @@
 
 # 环境需求
 `Python3.6+`
+
+# API文档
+[Project Wiki](https://github.com/i2cy/I2cylib/wiki/API-Document)
