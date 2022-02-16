@@ -19,7 +19,8 @@ VERSION = "2.0"
 class Server(I2TCPserver):
 
     def __init__(self, key=b"I2TCPbasicKey", port=24678,
-                 max_con=20, logger=None, secured_connection=True):
+                 max_con=20, logger=None, secured_connection=True,
+                 max_buffer_size=100, watchdog_timeout=15, timeout=20):
         """
         I2TCP server class  I2TCP服务端类
 
@@ -28,7 +29,10 @@ class Server(I2TCPserver):
         :param max_con: int, max TCP connection(s) that allowed
                         to be accept at the same time  最大同时接受的连接数
         :param logger: Logger, server log output object  日志器（来自于i2cylib.utils.logger.logger.Logger）
-        :param secured_connection: bool, enable encryption in connection
+        :param secured_connection: bool, enable encryption in connection  启用安全加密层
+        :param max_buffer_size: int, max package buffer size for every handler  包缓冲区最大大小（单位：个）
+        :param watchdog_timeout: int, timeout value for watchdogs  看门狗超时时间
+        :param timeout: int, timeout value for connection  连接超时时间
         """
         super(Server, self).__init__(key=key, port=port, max_con=max_con,
                                      logger=logger)
@@ -38,6 +42,10 @@ class Server(I2TCPserver):
         self.public_key = None
         self.private_key = None
         self.secured_connection = secured_connection
+
+        self.max_buffer_size = max_buffer_size
+        self.watchdog_timeout = watchdog_timeout
+        self.timeout = timeout
 
         if secured_connection:
             self.logger.INFO("{} generating secured session RSA keychain".format(self.log_header))
@@ -62,7 +70,9 @@ class Server(I2TCPserver):
                 if self.live:
                     self.logger.INFO("{} new connection {}:{} coming in".format(self.log_header,
                                                                                 addr[0], addr[1]))
-                    handler = Handler(con, addr, self)
+                    handler = Handler(con, addr, self,
+                                      timeout=self.timeout, watchdog_timeout=self.watchdog_timeout,
+                                      buffer_max=self.max_buffer_size)
                     for i in range(self.max_con):
                         if self.connections[i] is None:
                             self.connections.update({i: {"handler": handler,
