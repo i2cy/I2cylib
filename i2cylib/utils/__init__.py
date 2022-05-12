@@ -13,3 +13,4 @@ from .string import *
 from .time import *
 from .delay import *
 from .stdout import *
+from .logger import *

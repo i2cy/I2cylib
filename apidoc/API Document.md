@@ -21,7 +21,7 @@ _注意：所有受保护的接口都不在此文档中显示_
 ### `i2cylib.network` sub catalogue | 子目录
 * [`i2cylib.network.I2Scan`  _port scanner | 端口扫描_](https://github.com/i2cy/I2cylib/wiki/API-Document#i2cylibnetworki2scan-source-%E6%BA%90%E7%A0%81)
 * [`i2cylib.network.I2TCP`  _secured socket based on TCP | 高度封装的TCP安全套接字通讯接口_](https://github.com/i2cy/I2cylib/wiki/API-Document#i2cylibnetworki2tcp-source-%E6%BA%90%E7%A0%81)
-* `i2cylib.network.i2tcp_basic` _the base classes of I2TCP (protected) | I2TCP基类（保留）_
+* `i2cylib.network.i2tcp_basic` _the base classes of I2TCP (protected) | I2TCP基类（保留不予展示）_
 
 ### `i2cylib.network.I2Scan` [[source 源码]](https://github.com/i2cy/I2cylib/blob/master/i2cylib/network/I2Scan/i2scan.py)
 A port scanning tool, which has its own command line version, use command `i2scan` in terminal for more.
@@ -268,48 +268,134 @@ A secured extended socket protocol based-on TCP/IP. I2TCP has reached its new ge
 #### **Server**
 >
 > **`i2cylib.network.I2TCP.Server(self, key=b"I2TCPbasicKey", port=24678,
-                 max_con=20, logger=None, secured_connection=True)`**
+                 max_con=20, logger=None, secured_connection=True,
+                 max_buffer_size=100, watchdog_timeout=15, timeout=20)`**
 > > **Base 基类:** `I2TCPserver`
 > >
 > > **Return 返回:** `Server`
 > >
 > > I2TCP Server object, embedded with APIs: start, kill, get_connection
 > >
-> > I2TCP客户端对象，内嵌用户API有用于发送的send，用于筛选（可选）接收数据包的get，用于断开连接恢复初始状态的reset，用于建立I2TCP连接的connect
+> > I2TCP服务端对象，内嵌的API有用于启动服务器的start，用于关闭服务器的kill，用于获取连接handler对象的get_connection
 > >
 > > | Arguments 形参     |                                                                                          |
 > > |--------------------|------------------------------------------------------------------------------------------|
-> > |     hostname       |(`str`) Server address. 服务器地址                                                            |
-> > |       port         |(`int` default: _24678_) Server port. 服务器端口                                                               |
-> > |       key          |(`bytes` default: _b"I2TCPbasicKey"_) Dynamic key for authentication. 对称动态密钥                                       |
-> > |  watchdog_timeout  |(`int` >=1 default: _15_) Watchdog timeout. 守护线程超时时间                                                |
+> > |       key          |(`bytes` default: _b"I2TCPbasicKey"_) Dynamic key for authentication. 对称动态密钥          |
+> > |       port         |(`int` default: _24678_) Server port. 服务器端口                                           |
+> > |      max_con       |(`int` >=0 default:_20_) Max connection counts that allowed to be handled by server. 服务器最大同时连接数|
 > > |     logger         |(`i2cylib.utils.Logger` default: _Logger()_) Client log output object. 日志器接口（来自于i2cylib.utils.logger.logger.Logger）|
+> > | secured_connection |(`bool` default:_True_) Use secured socket layer and random session key to encrypt data. 是否使用安全连接模式|
 > > |   max_buffer_size  |(`int` >=0 default: _100_) Max pakcage buffer size. 最大包缓冲池大小（单位：个）                              |
+> > |  watchdog_timeout  |(`int` >=1 default: _15_) Watchdog timeout. 守护线程超时时间                                                |
+> > |      timeout       |(`int` >=1 default: _20_) Connection timeout. 连接超时时间                                              |
 > >
-> > **`connect(self, timeout=10)`**
+> > Example to create a I2TCP server at 0.0.0.0:12000 with token b"testToken123". When the first connection has been handled, handler will repeat the 
+> > data and send it back to client until handler received a pakcage b"CLOSE"
+> >
+> > 以下典例创建了一个监听12000端口的I2TCP服务器，并阻塞等待接入的连接，接到第一个来访连接后，将接收来访连接的数据并原封不动地发送回去，直到接收到b"CLOSE"
+> >
+> >     from i2cylib import Server
+> >     srv = Server(key=b"testToken123", port=12000)
+> >     srv.start()
+> >     con = srv.get_connection(wait=True)
+> >     while True:
+> >         data = con.get()
+> >         if data is not None:
+> >             con.send(data)
+> >             if data == b"CLOSE":
+> >                 con.kill()
+> >                 break
+> >
+> > **`start(self, port=None)`**
 > > >
-> > > **Return 返回:** `bool` connection status. 连接状态
+> > > **Return 返回:** `None`
 > > >
-> > > Build I2TCP connection to server and start watchdogs and reciver thread
+> > > Build I2TCP server and start to listening the target port
 > > >
-> > > 连接至服务器，并启动看门狗线程和接收缓冲线程
+> > > 启动服务器
 > > >
 > > > | Arguments 形参     |                                                                                          |
 > > > |--------------------|------------------------------------------------------------------------------------------|
-> > > |     timeout        |(`int` >=0 default:_10_) Set the connection timeout time. 设置超时时间                      |
+> > > |      port          |(`int` default:_None_) Update server port. 重新设置服务器监听端口                      |
+> >
+> > **`kill(self)`**
+> > >
+> > > **Return 返回:** `None`
+> > >
+> > > Shutdown server and stop every sub threads
+> > >
+> > > 关闭I2TCP服务端并结束所有子进程。
+> >
+> > **`get_connection(self, wait=False)`**
+> > >
+> > > **Return 返回:** [`Handler` Connection handler. 连接句柄处理接口](https://github.com/i2cy/I2cylib/wiki/API-Document#handler)
+> > >
+> > > Build I2TCP server and start to listening the target port
+> > >
+> > > 启动服务器
+> > >
+> > > | Arguments 形参     |                                                                                          |
+> > > |--------------------|------------------------------------------------------------------------------------------|
+> > > |      wait          |(`bool` default:_False_) Should the method wait while no connections to be handled. 设置当没有待处理的连接时是否阻塞等待|
+
+#### **Handler**
+>
+> **`i2cylib.network.I2TCP.Handler(self, srv, addr, parent, timeout=20,
+                 buffer_max=256, watchdog_timeout=15, temp_dir="temp")`**
+> > **Base 基类:** `I2TCPhandler`
+> >
+> > **Return 返回:** `Handler`
+> >
+> > I2TCP server connection handler, it provides API like kill, get and send. Handler object usually can not initialized by user, it is generated from
+> > i2cylib.network.I2TCP.Server.get_connection() method.
+> >
+> > I2TCP服务端连接句柄处理对象，提供用于获取数据包的get，发送数据包的send，以及用于断开连接的kill三个API接口。通常Handler对象是由
+> > i2cylib.network.I2TCP.Server.get_connection()自动生成的，不需要用户手动初始化，不过为了文档完整性，还是将初始化的形参列表展示说明。
+> >
+> > | Arguments 形参     |                                                                                          |
+> > |--------------------|------------------------------------------------------------------------------------------|
+> > |       srv          |(`socket.socket`) raw socket object. socket对象                                       |
+> > |       addr         |(`tuple`) Connection address. 来访连接地址。                                           |
+> > |      parent        |(`i2cylib.network.I2TCP.Server`) Server object. Server对象          ||
+> > |      timeout       |(`int` >=1 default: _20_) Connection timeout. 连接超时时间                                              |
+> > |   buffer_max       |(`int` >=0 default: _100_) Max pakcage buffer size. 最大包缓冲池大小（单位：个）                              |
+> > |  watchdog_timeout  |(`int` >=1 default: _15_) Watchdog timeout. 守护线程超时时间                                                |
+> > |     temp_dir       |(`str` default: _"temp"_) Cache directory path (abandoned). 临时缓存目录（已废弃，设置无用）|
 > >
 > > **`send(self, data)`**
 > > >
-> > > **Return 返回:** `int` Total length of data that sent to server. 总共发送的数据长度（包括I2TCP协议包头）
+> > > **Return 返回:** `int` Total length of data that sent to client. 总共发送的数据长度（包括I2TCP协议包头）
 > > >
-> > > Send data to server.
+> > > Send data to client.
 > > >
-> > > 向服务端发送数据。
+> > > 向连接的客户端发送数据。
 > > >
 > > > | Arguments 形参     |                                                                                          |
 > > > |--------------------|------------------------------------------------------------------------------------------|
-> > > |     data          |(`bytes`) Data that to be send to server (length must be smaller than 16MB). 待发送的数据，长度小于16MB|
+> > > |     data          |(`bytes`) Data that to be send to client (length must be smaller than 16MB). 待发送的数据，长度小于16MB|
 > >
+> > **`get(self, header=None, timeout=0)`**
+> > >
+> > > **Return 返回:** `bytes` Depacked data, return `None` if no package is found/received. 解析后的包数据（不含协议层），若未找到数据包或超时，则返回`None`
+> > >
+> > > Get data from package buffer that received from client, you can also specify the package header that this method will retern
+> > > the oldest package that match this header you specified. Otherwise, this method will return the oldest package that received from
+> > > client.
+> > >
+> > > 从连接客户端数据包接收缓冲区获取数据包。你可以指定特定的包头部内容，过滤器会筛选出包含此头部的最先收到的包，否则将返回最先收到的包。
+> > >
+> > > | Arguments 形参     |                                                                                          |
+> > > |--------------------|------------------------------------------------------------------------------------------|
+> > > |     header         |(`bytes` default: _None_) Package header to filter. 筛选的包头部，可留空|
+> > > |     timeout         |(`int` >=0 default:_0_) Set the max time to wait until a package is find/received. 设置超时值|
+> >
+> > **`kill(self)`**
+> > >
+> > > **Return 返回:** `None`
+> > >
+> > > Close the connection and kill all sub threads, which means you will disconnect from client.
+> > >
+> > > 重置与连接的客户端的TCP/IP连接，即断开连接
 
 ## Crypto | 加密
 `i2cylib.crypto`
