@@ -152,6 +152,7 @@ class Client(I2TCPclient):
         self.flag_pack_busy = False
         self.flag_depack_busy = False
         self.flag_secured_connection_built = False
+        self.package_buffer = []
 
     def send(self, data):
         """
@@ -196,6 +197,9 @@ class Client(I2TCPclient):
         :return: bool, connection status 连接状态（成功为True）
         """
 
+        if self.connected:
+            return
+        self.reset()
         ret = super(Client, self).connect(timeout=timeout)
         self.connection_timeout = timeout
 
@@ -208,6 +212,7 @@ class Client(I2TCPclient):
                 self.log_header
             ))
             self.connected = False
+            self.reset()
             return self.connected
 
         flag = flag.split(b"\a")
@@ -219,6 +224,7 @@ class Client(I2TCPclient):
             except Exception as err:
                 self.logger.ERROR("{} broken rsa key received, {}".format(self.log_header, flag[1]))
                 self.connected = False
+                self.reset()
                 return self.connected
 
             try:
@@ -235,6 +241,7 @@ class Client(I2TCPclient):
                     self.log_header, err
                 ))
                 self.connected = False
+                self.reset()
                 return self.connected
 
             feedback = self.get(timeout=self.connection_timeout)
@@ -243,6 +250,7 @@ class Client(I2TCPclient):
                     self.log_header
                 ))
                 self.connected = False
+                self.reset()
                 return self.connected
 
             self.logger.DEBUG("{} secured connection built".format(self.log_header))
@@ -256,4 +264,5 @@ class Client(I2TCPclient):
                 self.log_header, flag
             ))
             self.connected = False
+            self.reset()
             return self.connected
