@@ -27,16 +27,16 @@ class Logger:  # Logger
         self.echo = echo
         if level in ("DEBUG", 0):
             self.level = 0
-        elif level == ("INFO", 1):
+        elif level in ("INFO", 1):
             self.level = 1
-        elif level == ("WARNING", 2):
+        elif level in ("WARNING", 2):
             self.level = 2
-        elif level == ("ERROR", 3):
+        elif level in ("ERROR", 3):
             self.level = 3
-        elif level == ("CRITICAL", 4):
+        elif level in ("CRITICAL", 4):
             self.level = 4
         else:
-            raise Exception("logger level: DEBUG, INFO, WARNING, ERROR, CRITICAL")
+            raise Exception("invalid level \"{}\", logger level: DEBUG, INFO, WARNING, ERROR, CRITICAL".format(level))
         try:
             time.strftime(date_format)
         except Exception as err:
@@ -124,3 +124,11 @@ class Logger:  # Logger
         log_file.write(infos)
         log_file.close()
         return infos
+
+
+if __name__ == '__main__':
+    logger = Logger(level="DEBUG")
+    logger = Logger(level="INFO")
+    logger = Logger(level="WARNING")
+    logger = Logger(level="ERROR")
+    logger = Logger(level="CRITICAL")
