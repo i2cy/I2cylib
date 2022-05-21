@@ -255,7 +255,7 @@ class Handler(I2TCPhandler):
 
             if timeout:
                 time.sleep(0.0001)
-            elif timeout == 0 or (time.time() - t) > timeout:
+            if timeout == 0 or (time.time() - t) > timeout:
                 break
 
         return ret

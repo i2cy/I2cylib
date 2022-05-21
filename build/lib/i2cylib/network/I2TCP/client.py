@@ -165,7 +165,7 @@ class Client(I2TCPclient):
 
     def get(self, header=None, timeout=0):
         """
-        get one package with specified header(or not)  从缓冲池中获取数据包（可指定包头部进行筛选）
+        get one package with specified header(or not)  从缓冲池中获取数据包（可指定包头部进行筛选）若超时则返回None
 
         :param timeout: int, timeout for receiving specified header  超时时间
         :param header: bytes, package header  包头部，可不指定
@@ -184,7 +184,7 @@ class Client(I2TCPclient):
 
             if timeout:
                 time.sleep(0.0001)
-            elif timeout == 0 or (time.time() - t) > timeout:
+            if timeout == 0 or (time.time() - t) > timeout:
                 break
 
         return ret
