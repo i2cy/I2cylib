@@ -8,12 +8,13 @@
 
 import time
 import rsa
+import random
 from hashlib import md5
 from i2cylib.network.i2tcp_basic import I2TCPserver, I2TCPhandler
 from i2cylib.crypto.iccode import Iccode
 
 
-VERSION = "2.0"
+VERSION = "2.1"
 
 
 class Server(I2TCPserver):
@@ -147,7 +148,7 @@ class Handler(I2TCPhandler):
         if self.flag_secured_connection_built:  # 安全连接加密
             assert isinstance(self.coder_pack, Iccode)
             while self.flag_pack_busy:
-                time.sleep(0.0001)
+                time.sleep(0.001)
             self.flag_pack_busy = True
             self.coder_pack.reset()
             data = self.coder_pack.encode(data)
@@ -155,15 +156,17 @@ class Handler(I2TCPhandler):
 
         left = length
         header_unit = self.version + self.keygen.key
+        package_id = bytes((random.randint(0, 255),))
         while left > 0:
             pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
-            if left < 60000:
+            if left < 8182:
                 left = 0
             else:
-                left -= 60000
+                left -= 8182
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
             pak += md5(pak + header_unit).digest()[:3]
+            pak += package_id
             pak += data[offset:length - left]
             offset = length - left
             paks.append(pak)
@@ -175,7 +178,7 @@ class Handler(I2TCPhandler):
         if self.flag_secured_connection_built:  # 安全连接解密
             assert isinstance(self.coder_depack, Iccode)
             while self.flag_depack_busy and self.live:
-                time.sleep(0.0001)
+                time.sleep(0.001)
             if data:
                 self.flag_depack_busy = True
                 self.coder_depack.reset()
