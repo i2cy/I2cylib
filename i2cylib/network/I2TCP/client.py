@@ -76,10 +76,10 @@ class Client(I2TCPclient):
         package_id = bytes((random.randint(0, 255),))
         while left > 0:
             pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
-            if left < 8182:
+            if left < 32758:
                 left = 0
             else:
-                left -= 8182
+                left -= 32758
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
             pak += md5(pak + header_unit).digest()[:3]
@@ -160,7 +160,7 @@ class Client(I2TCPclient):
     def send(self, data):
         """
         send data to server 向I2TCP服务器发送数据
-        it is recommended that data length to be timed by 8182 bytes 推荐单次发送大小位8182的整数倍
+        it is recommended that data length to be timed by 32758 bytes 推荐单次发送大小位32758的整数倍
 
         :param data: bytes, data to send (smaller than 16MB) 待发送的数据
         :return: int, total amount of bytes that has been sent 发送出去的总大小
