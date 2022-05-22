@@ -8,12 +8,13 @@ import socket
 import threading
 import time
 import uuid
+import random
 from hashlib import md5, sha256
 from i2cylib.crypto.keygen import DynKey
 from i2cylib.crypto.iccode import Iccode
 from i2cylib.utils.logger import Logger
 
-VERSION = "1.3"
+VERSION = "1.4"
 
 
 class I2TCPclient:
@@ -58,20 +59,23 @@ class I2TCPclient:
         :param data: bytes
         :return: List(bytes), packed data
         """
+
         offset = 0
         paks = []
         length = len(data)
         left = length
         header_unit = self.version + self.keygen.key
+        package_id = bytes((random.randint(0, 255),))
         while left > 0:
             pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
-            if left < 60000:
+            if left < 8182:
                 left = 0
             else:
-                left -= 60000
+                left -= 8182
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
             pak += md5(pak + header_unit).digest()[:3]
+            pak += package_id
             pak += data[offset:length - left]
             offset = length - left
             paks.append(pak)
@@ -85,17 +89,19 @@ class I2TCPclient:
         :return: bytes, data
         """
 
-        pak_type = pak_data[0]
         header_unit = self.version + self.keygen.key
+        pak_type = pak_data[0]
+
         if pak_type == ord("H"):
-            ret = None
+            ret = "heartbeat"
         elif pak_type == ord("A"):
             ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
                    "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
-                   "header_md5": pak_data[6:9],
-                   "data": pak_data[9:]}
-            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
-            if header_md5 != ret["header_md5"]:
+                   "header_sum": pak_data[6:9],
+                   "package_id": pak_data[9],
+                   "data": pak_data[10:]}
+            header_sum = md5(pak_data[0:6] + header_unit).digest()[:3]
+            if header_sum != ret["header_sum"]:
                 ret = None
         else:
             ret = None
@@ -306,7 +312,7 @@ class I2TCPclient:
         try:
             ret = None
             while ret is None:
-                pak = self.clt.recv(9)
+                pak = self.clt.recv(10)
                 if pak == b"":
                     self.logger.INFO("{} connection lost".format(self.log_header))
                     self.reset()
@@ -321,7 +327,7 @@ class I2TCPclient:
                 data += self.clt.recv(ret["package_length"] - length)
             all_data = data
             while len(all_data) < total_length:
-                pak = self.clt.recv(9)
+                pak = self.clt.recv(10)
                 ret = self._depacker(pak)
                 if ret is None:
                     raise Exception("broken package")

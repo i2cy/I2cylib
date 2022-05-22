@@ -24,7 +24,6 @@ class DynKey: # 64-Bits dynamic key generator/matcher
             flush_times = 1
         self.flush_time = flush_times
 
-
     def keygen(self, offset=0): # 64-Bits dynamic key generator
         time_unit = int(time.time() * self.multiplier) + int(offset)
         time_unit = str(time_unit).encode()

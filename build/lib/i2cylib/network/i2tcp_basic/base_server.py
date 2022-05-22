@@ -3,7 +3,7 @@
 # Author: i2cy(i2cy@outlook.com)
 # Filename: I2TCP_server
 # Created on: 2021/1/11
-
+import random
 import socket
 import threading
 import time
@@ -14,7 +14,7 @@ from i2cylib.crypto.iccode import Iccode
 from i2cylib.utils.logger import Logger
 from i2cylib.utils.bytes import random_keygen
 
-VERSION = "1.3"
+VERSION = "1.4"
 
 
 class I2TCPserver:
@@ -216,7 +216,7 @@ class I2TCPserver:
         while ret is None and self.live:
             for i in range(self.max_con):
                 if self.connections[i] is None:
-                    continue
+                    time.sleep(0.001)
                 if not self.connections[i]["handled"]:
                     ret = self.connections[i]["handler"]
                     self.connections[i]["handled"] = True
@@ -286,15 +286,17 @@ class I2TCPhandler:
         length = len(data)
         left = length
         header_unit = self.version + self.keygen.key
+        package_id = bytes((random.randint(0, 255),))
         while left > 0:
             pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
-            if left < 60000:
+            if left < 8182:
                 left = 0
             else:
-                left -= 60000
+                left -= 8182
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
             pak += md5(pak + header_unit).digest()[:3]
+            pak += package_id
             pak += data[offset:length - left]
             offset = length - left
             paks.append(pak)
@@ -310,16 +312,17 @@ class I2TCPhandler:
 
         header_unit = self.version + self.keygen.key
         pak_type = pak_data[0]
-        ret = None
+
         if pak_type == ord("H"):
             ret = "heartbeat"
         elif pak_type == ord("A"):
             ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
                    "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
-                   "header_md5": pak_data[6:9],
-                   "data": pak_data[9:]}
-            header_md5 = md5(pak_data[0:6] + header_unit).digest()[:3]
-            if header_md5 != ret["header_md5"]:
+                   "header_sum": pak_data[6:9],
+                   "package_id": pak_data[9],
+                   "data": pak_data[10:]}
+            header_sum = md5(pak_data[0:6] + header_unit).digest()[:3]
+            if header_sum != ret["header_sum"]:
                 ret = None
         else:
             ret = None
@@ -450,7 +453,10 @@ class I2TCPhandler:
             mix_sha256.update(key_sha256.digest() + rand_num)
             mix_coder = Iccode(mix_sha256.digest(), fingerprint_level=6)
 
-            dynamic_key = self.srv.recv(65536)
+            dynamic_key = b""
+            while len(dynamic_key) < 64:
+                dynamic_key += self.srv.recv(64 - len(dynamic_key))
+
             dynamic_key = mix_coder.decode(dynamic_key)
 
             if self.keygen.keymatch(dynamic_key):
@@ -460,7 +466,9 @@ class I2TCPhandler:
             else:
                 self.logger.WARNING("{} unauthorized connection, key received: {}".format(self.log_header,
                                                                                           dynamic_key))
-            feedback = self.srv.recv(2)
+            feedback = b""
+            while len(feedback) < 2:
+                feedback += self.srv.recv(2)
             if feedback != b"OK":
                 raise Exception("invalid feedback, {}".format(feedback))
 
@@ -479,7 +487,7 @@ class I2TCPhandler:
 
         ret = None
         while ret is None:
-            pak = self.srv.recv(9)
+            pak = self.srv.recv(10)
             self.logger.DEBUG("{} received package head: {}".format(self.log_header, pak))
             if pak == b"":
                 return None
@@ -492,6 +500,7 @@ class I2TCPhandler:
                 ret = None
 
         total_length = ret["total_length"]
+        package_id = ret["package_id"]
         self.logger.DEBUG("{} receiving data of total length {}".format(self.log_header,
                                                                         total_length))
 
@@ -501,10 +510,11 @@ class I2TCPhandler:
             length = len(data)
             data += self.srv.recv(ret["package_length"] - length)
         all_data = data
+
         while len(all_data) < total_length:
-            pak = self.srv.recv(9)
+            pak = self.srv.recv(10)
             ret = self._depacker(pak)
-            if ret is None:
+            if ret is None or package_id != ret["package_id"]:
                 raise Exception("broken package")
             if ret == "heartbeat":
                 self.logger.DEBUG("{} heartbeat received".format(self.log_header))

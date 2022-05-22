@@ -45,7 +45,7 @@ if __name__ == '__main__':
     assert isinstance(srv_clt, Handler)
 
     data_recv_nohead = srv_clt.get(timeout=3)
-    data_recv = srv_clt.get(b"A15", timeout=3)
+    data_recv = srv_clt.get(b"A15", timeout=5)
 
     for i in range(10):
         srv_clt.send("B{}".format(i).encode() + data_recv)
