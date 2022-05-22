@@ -515,7 +515,7 @@ class I2TCPhandler:
         while len(all_data) < total_length:
             pak = self.srv.recv(10)
             ret = self._depacker(pak)
-            if ret is None or package_id != ret["package_id"]:
+            if ret is None or package_id != ret["package_id"] or total_length - len(all_data) != ret["total_length"]:
                 raise Exception("broken package")
             if ret == "heartbeat":
                 self.logger.DEBUG("{} heartbeat received".format(self.log_header))
@@ -526,6 +526,9 @@ class I2TCPhandler:
                 length = len(data)
                 data += self.srv.recv(ret["package_length"] - length)
             all_data += data
+
+        if len(all_data) != total_length:
+            raise Exception("broken package")
 
         self._feed_watchdog()
         return all_data
