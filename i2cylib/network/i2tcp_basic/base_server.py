@@ -310,7 +310,7 @@ class I2TCPhandler:
 
         header_unit = self.version + self.keygen.key
         pak_type = pak_data[0]
-        ret = None
+
         if pak_type == ord("H"):
             ret = "heartbeat"
         elif pak_type == ord("A"):
@@ -450,7 +450,10 @@ class I2TCPhandler:
             mix_sha256.update(key_sha256.digest() + rand_num)
             mix_coder = Iccode(mix_sha256.digest(), fingerprint_level=6)
 
-            dynamic_key = self.srv.recv(65536)
+            dynamic_key = b""
+            while len(dynamic_key) < 64:
+                dynamic_key = self.srv.recv(64 - len(dynamic_key))
+
             dynamic_key = mix_coder.decode(dynamic_key)
 
             if self.keygen.keymatch(dynamic_key):

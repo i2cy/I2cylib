@@ -57,6 +57,17 @@ class Logger:  # Logger
         except Exception as err:
             raise Exception("Can't open file: \"" + filename + "\", result: " + str(err))
 
+        self.__flag_busy = False
+
+    def __write(self, msg):
+        while self.__flag_busy:
+            continue
+        self.__flag_busy = True
+        log_file = open(self.filename, "a")
+        log_file.write(msg)
+        log_file.close()
+        self.__flag_busy = False
+
     def DEBUG(self, msg):
         if self.level > 0:
             return
@@ -66,9 +77,7 @@ class Logger:  # Logger
             sys.stdout.flush()
         if self.filename is None:
             return infos
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
+        self.__write(infos)
         return infos
 
     def INFO(self, msg):
@@ -80,9 +89,7 @@ class Logger:  # Logger
             sys.stdout.flush()
         if self.filename is None:
             return infos
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
+        self.__write(infos)
         return infos
 
     def WARNING(self, msg):
@@ -94,9 +101,7 @@ class Logger:  # Logger
             sys.stdout.flush()
         if self.filename is None:
             return infos
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
+        self.__write(infos)
         return infos
 
     def ERROR(self, msg):
@@ -108,9 +113,7 @@ class Logger:  # Logger
             sys.stdout.flush()
         if self.filename is None:
             return infos
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
+        self.__write(infos)
         return infos
 
     def CRITICAL(self, msg):
@@ -120,9 +123,7 @@ class Logger:  # Logger
             sys.stdout.flush()
         if self.filename is None:
             return infos
-        log_file = open(self.filename, "a")
-        log_file.write(infos)
-        log_file.close()
+        self.__write(infos)
         return infos
 
 
