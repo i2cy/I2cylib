@@ -160,6 +160,7 @@ class Client(I2TCPclient):
     def send(self, data):
         """
         send data to server 向I2TCP服务器发送数据
+        it is recommended that data length to be timed by 8182 bytes 推荐单次发送大小位8182的整数倍
 
         :param data: bytes, data to send (smaller than 16MB) 待发送的数据
         :return: int, total amount of bytes that has been sent 发送出去的总大小

@@ -1,0 +1,20 @@
+[2022-05-22 17:20:44] [DBUG] [I2TCP] [heartbeat] thread started
+[2022-05-22 17:20:44] [DBUG] [I2TCP] [watchdog] thread started
+[2022-05-22 17:20:44] [INFO] [I2TCP] server localhost:27631 connected
+[2022-05-22 17:20:45] [DBUG] [I2TCP] receiving data of total length 9061741
+[2022-05-22 17:20:47] [DBUG] [I2TCP] receiving data of total length 22657
+[2022-05-22 17:20:48] [DBUG] [I2TCP] receiving data of total length 9061741
+[2022-05-22 17:20:50] [DBUG] [I2TCP] receiving data of total length 22657
+[2022-05-22 17:20:52] [DBUG] [I2TCP] receiving data of total length 9061741
+[2022-05-22 17:20:53] [DBUG] [I2TCP] receiving data of total length 22657
+[2022-05-22 17:20:54] [DBUG] [I2TCP] receiving data of total length 22657
+[2022-05-22 17:20:54] [DBUG] [I2TCP] receiving data of total length 22657
+[2022-05-22 17:20:55] [DBUG] [I2TCP] receiving data of total length 22657
+[2022-05-22 17:21:02] [DBUG] [I2TCP] [heartbeat] heartbeat sent
+[2022-05-22 17:21:03] [DBUG] [I2TCP] receiving data of total length 21
+[2022-05-22 17:21:10] [DBUG] [I2TCP] [heartbeat] heartbeat sent
+[2022-05-22 17:21:11] [DBUG] [I2TCP] receiving data of total length 21
+[2022-05-22 17:21:18] [DBUG] [I2TCP] [heartbeat] heartbeat sent
+[2022-05-22 17:21:19] [DBUG] [I2TCP] receiving data of total length 21
+[2022-05-22 17:21:22] [DBUG] [I2TCP] [heartbeat] thread stopped
+[2022-05-22 17:21:22] [DBUG] [I2TCP] [watchdog] thread stopped
