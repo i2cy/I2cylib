@@ -159,10 +159,10 @@ class Handler(I2TCPhandler):
         package_id = bytes((random.randint(0, 255),))
         while left > 0:
             pak = b"A" + left.to_bytes(length=3, byteorder='big', signed=False)
-            if left < 8182:
+            if left < 32758:
                 left = 0
             else:
-                left -= 8182
+                left -= 32758
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
             pak += md5(pak + header_unit).digest()[:3]
