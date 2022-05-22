@@ -216,11 +216,12 @@ class I2TCPserver:
         while ret is None and self.live:
             for i in range(self.max_con):
                 if self.connections[i] is None:
-                    time.sleep(0.001)
+                    continue
                 if not self.connections[i]["handled"]:
                     ret = self.connections[i]["handler"]
                     self.connections[i]["handled"] = True
                     break
+            time.sleep(0.001)
             if not wait:
                 break
 
