@@ -74,7 +74,9 @@ class I2TCPclient:
                 left -= 32758
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
-            pak += md5(pak + header_unit).digest()[:3]
+            pak += bytes((md5(pak + header_unit).digest()[2],))
+            payload_sum = md5(data[offset:length - left]).digest()[:2]
+            pak += payload_sum
             pak += package_id
             pak += data[offset:length - left]
             offset = length - left
@@ -97,10 +99,11 @@ class I2TCPclient:
         elif pak_type == ord("A"):
             ret = {"total_length": int.from_bytes(pak_data[1:4], byteorder='big', signed=False),
                    "package_length": int.from_bytes(pak_data[4:6], byteorder='big', signed=False),
-                   "header_sum": pak_data[6:9],
+                   "header_sum": pak_data[6],
+                   "payload_sum": pak_data[7:9],
                    "package_id": pak_data[9],
                    "data": pak_data[10:]}
-            header_sum = md5(pak_data[0:6] + header_unit).digest()[:3]
+            header_sum = md5(pak_data[0:6] + header_unit).digest()[2]
             if header_sum != ret["header_sum"]:
                 ret = None
         else:
@@ -126,7 +129,7 @@ class I2TCPclient:
                     if self.watchdog_waitting > (self.watchdog_timeout // 2):
                         try:
                             self.clt.sendall(
-                                b"Heartbeat"
+                                b"Heartbeat_"
                             )
                             self.logger.DEBUG("{} {} heartbeat sent".format(self.log_header, local_header))
                             self._feed_watchdog()
@@ -308,11 +311,17 @@ class I2TCPclient:
         if self.clt is None or not self.connected:
             raise Exception("no connection built yet")
 
-        all_data = None
+        all_data = b""
         try:
             ret = None
             while ret is None:
-                pak = self.clt.recv(10)
+                pak = b"\x00"
+                while pak[0] not in (72, 65):
+                    pak = self.clt.recv(1)
+                    if pak == b"":
+                        return None
+                while len(pak) < 10:
+                    pak += self.clt.recv(10 - len(pak))
                 if pak == b"":
                     self.logger.INFO("{} connection lost".format(self.log_header))
                     self.reset()
@@ -325,9 +334,19 @@ class I2TCPclient:
             while length != ret["package_length"]:
                 length = len(data)
                 data += self.clt.recv(ret["package_length"] - length)
+            payload_sum = md5(data).digest()[:2]
+            if payload_sum != ret["payload_sum"]:
+                self.logger.WARNING("{} broken package received".format(self.log_header))
+                raise Exception("broken package")
             all_data = data
             while len(all_data) < total_length:
-                pak = self.clt.recv(10)
+                pak = b"\x00"
+                while pak[0] not in (72, 65):
+                    pak = self.clt.recv(1)
+                    if pak == b"":
+                        return None
+                while len(pak) < 10:
+                    pak += self.clt.recv(10 - len(pak))
                 ret = self._depacker(pak)
                 if ret is None:
                     raise Exception("broken package")
@@ -336,6 +355,10 @@ class I2TCPclient:
                 while length != ret["package_length"]:
                     length = len(data)
                     data += self.clt.recv(ret["package_length"] - length)
+                payload_sum = md5(data).digest()[:2]
+                if payload_sum != ret["payload_sum"]:
+                    self.logger.WARNING("{} broken package received".format(self.log_header))
+                    raise Exception("broken package")
                 all_data += data
         except Exception as err:
             if exception and self.live:

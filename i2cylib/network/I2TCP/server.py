@@ -165,7 +165,9 @@ class Handler(I2TCPhandler):
                 left -= 32758
             pak_length = length - left - offset
             pak += pak_length.to_bytes(length=2, byteorder='big', signed=False)
-            pak += md5(pak + header_unit).digest()[:3]
+            pak += bytes((md5(pak + header_unit).digest()[2],))
+            payload_sum = md5(data[offset:length - left]).digest()[:2]
+            pak += payload_sum
             pak += package_id
             pak += data[offset:length - left]
             offset = length - left
