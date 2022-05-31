@@ -41,6 +41,9 @@ i2cylib/network/I2TCP/test.py
 i2cylib/network/i2tcp_basic/__init__.py
 i2cylib/network/i2tcp_basic/base_client.py
 i2cylib/network/i2tcp_basic/base_server.py
+i2cylib/serial/__init__.py
+i2cylib/serial/HTprot/__init__.py
+i2cylib/serial/HTprot/htsocket.py
 i2cylib/utils/__init__.py
 i2cylib/utils/args/__init__.py
 i2cylib/utils/args/decode_args.py
