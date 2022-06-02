@@ -91,7 +91,10 @@ class PID(object):
 
         self.prev_err = self.measures
 
-    def __thread_calculator(self):
+    def coreTask(self):
+        pass
+
+    def __coreThread(self):
         if self.thread_flags["thread_calculator"]:
             return
 
@@ -101,6 +104,9 @@ class PID(object):
             ts = time.time()
             self.calc(self.dt + self.__time_offset)
             t = self.dt - time.time() + ts + self.__time_offset
+
+            self.coreTask()
+
             if t > 0:
                 time.sleep(t)
             self.__core_time = time.time() - ts
@@ -117,7 +123,7 @@ class PID(object):
         if self.running:
             return
         self.running = True
-        threading.Thread(target=self.__thread_calculator).start()
+        threading.Thread(target=self.__coreThread).start()
 
     def pause(self, wait=False):
         """
