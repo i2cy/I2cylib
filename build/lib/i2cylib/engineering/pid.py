@@ -12,7 +12,15 @@ import threading
 
 class PID(object):
 
-    def __init__(self):
+    def __init__(self, kp=0, ki=0, kd=0, core_freq=50):
+        """
+        PID object
+
+        :param kp: float (default: 0), K_P
+        :param ki: float (default: 0), K_I
+        :param kd: float (default: 0), K_D
+        :param core_freq: int (>0, default: 50), set the expecting value of core frequency
+        """
         self.kp = 0
         self.ki = 0
         self.kd = 0
@@ -30,7 +38,9 @@ class PID(object):
         self.out_limit = [0, 0]
         self.integ_limit = [0, 0]
 
-        self.dt = 0.02
+        self.dt = 1 / core_freq
+        self.__core_time = 0
+        self.__time_offset = 0
 
         self.running = False
         self.thread_flags = {"thread_calculator": False}
@@ -38,7 +48,7 @@ class PID(object):
     def set_deltaT(self, dt):
         self.dt = dt
 
-    def reset(self):
+    def reset(self, kp=0, ki=0, kd=0):
         self.out = 0
         self.offset = 0
         self.prev_err = 0
@@ -81,7 +91,7 @@ class PID(object):
 
         self.prev_err = self.measures
 
-    def thread_calculator(self):
+    def __thread_calculator(self):
         if self.thread_flags["thread_calculator"]:
             return
 
@@ -89,10 +99,12 @@ class PID(object):
 
         while self.running:
             ts = time.time()
-            self.calc(self.dt)
-            t = self.dt - time.time() + ts
+            self.calc(self.dt + self.__time_offset)
+            t = self.dt - time.time() + ts + self.__time_offset
             if t > 0:
                 time.sleep(t)
+            self.__core_time = time.time() - ts
+            self.__time_offset += 0.2 * (self.dt - self.__core_time)
 
         self.thread_flags["thread_calculator"] = False
 
@@ -105,7 +117,7 @@ class PID(object):
         if self.running:
             return
         self.running = True
-        threading.Thread(target=self.thread_calculator).start()
+        threading.Thread(target=self.__thread_calculator).start()
 
     def pause(self, wait=False):
         """
@@ -119,6 +131,13 @@ class PID(object):
             for i in self.thread_flags.keys():
                 if self.thread_flags[i]:
                     wait = True
+
+    def debug(self):
+        if not self.__core_time:
+            ct = 0
+        else:
+            ct = 1 / self.__core_time
+        return {"current_freq": ct, "time_offset": self.__time_offset}
 
 
 def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_model=None, test_time=5, dt=0.02):
