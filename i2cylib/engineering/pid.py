@@ -12,7 +12,7 @@ import threading
 
 class PID(object):
 
-    def __init__(self, kp=0, ki=0, kd=0, core_freq=50):
+    def __init__(self, kp=1, ki=0, kd=0, core_freq=50):
         """
         PID object
 
@@ -21,9 +21,9 @@ class PID(object):
         :param kd: float (default: 0), K_D
         :param core_freq: int (>0, default: 50), set the expecting value of core frequency
         """
-        self.kp = 0
-        self.ki = 0
-        self.kd = 0
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
         self.err = 0
         self.measures = 0
         self.expectation = 0
@@ -138,6 +138,15 @@ class PID(object):
                 if self.thread_flags[i]:
                     wait = True
 
+    def output(self):
+        return self.out
+
+    def input(self, measurement):
+        self.measures = measurement
+
+    def expect(self, expectation):
+        self.expectation = expectation
+
     def debug(self):
         if not self.__core_time:
             ct = 0
@@ -146,7 +155,53 @@ class PID(object):
         return {"current_freq": ct, "time_offset": self.__time_offset}
 
 
-def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_model=None, test_time=5, dt=0.02):
+class IncPID(PID):
+
+    def __init__(self, kp=1, ki=0, kd=0, core_freq=50):
+        super(IncPID, self).__init__(kp=kp, ki=ki, kd=kd,
+                                     core_freq=core_freq)
+        self.prev_err_2 = 0
+
+    def calc(self, dt):
+        self.err = self.expectation - self.measures + self.offset
+
+        if -self.death_area < self.err < self.death_area:
+            self.err = 0
+
+        if self.err_limit[0] != 0 or self.err_limit[1] != 0:
+            if self.err > self.err_limit[1]:
+                self.err = self.err_limit[1]
+            elif self.err < self.err_limit[0]:
+                self.err = self.err_limit[0]
+
+        self.integ = self.err * dt
+
+        if self.integ_limit[0] != 0 or self.integ_limit[1] != 0:
+            if self.integ > self.integ_limit[1]:
+                self.integ = self.integ_limit[1]
+            elif self.integ < self.integ_limit[0]:
+                self.integ = self.integ_limit[0]
+
+        deriv = (self.err - 2 * self.prev_err + self.prev_err_2) / dt
+
+        out = self.kp * self.err + self.ki * self.integ + self.kd * deriv
+
+        if self.out_limit[0] != 0 or self.out_limit[1] != 0:
+            if out > self.out_limit[1]:
+                out = self.out_limit[1]
+            elif out < self.out_limit[0]:
+                out = self.out_limit[0]
+
+        self.out += out
+
+        self.prev_err_2 = self.prev_err
+        self.prev_err = self.err
+
+
+def test(p=1.0, i=0.0, d=0.0,
+         test_mass=4.0, gravity=10, noise_k=1, measure_delay=0.1,
+         test_exp_model=None, test_time=5, dt=0.02,
+         start_hight=2, gamma=0.1, incpid=True):
     """
     pid test run, test object moving in single axis, start in x=0, F=10*pid.out
 
@@ -161,7 +216,10 @@ def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_mod
     """
 
     import random
-    pid = PID()
+    if incpid:
+        pid = IncPID()
+    else:
+        pid = PID()
     pid.kp = p
     pid.ki = i
     pid.kd = d
@@ -171,13 +229,19 @@ def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_mod
 
     t = [0]
     exp = [0]
-    object_pos = [0]
+    object_pos = [start_hight]
     pid_out = [0]
 
     speed_t = 0
 
+    measures = [start_hight for ele in range(int(measure_delay / dt))]
+    pid.prev_err = measures[0]
+
+    out_prev_1 = 0
+    out_prev_2 = 0
+
     while True:
-        t.append(t[-1]+dt)
+        t.append(t[-1] + dt)
         if t[-1] > test_time:
             t.pop(-1)
             break
@@ -192,12 +256,18 @@ def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_mod
         exp.append(exp_t)
 
         pid.expectation = exp_t
-        pid.measures = object_pos[-1] + noise_k * random.random()
+        pid.measures = measures.pop(0)
+        measures.append(object_pos[-1] + noise_k * random.random())
         pid.calc(dt)
-        pid_out.append(pid.out)
 
-        a = (10 * pid_out[-1] - gravity) / test_mass
-        speed_t += a * dt * 0.9
+        pid_out.append(pid.out - out_prev_1)
+
+        out_prev_2 = pid.out - out_prev_1
+
+        # a = (10 * pid_out[-1] - gravity) / test_mass
+        # speed_t += a * dt * 0.9
+        speed_t = pid_out[-1] - gravity * test_mass
+        speed_t -= gamma * speed_t
         pos_t = object_pos[-1] + speed_t * dt
         object_pos.append(pos_t)
 
@@ -207,23 +277,28 @@ def test(p=1.0, i=0.0, d=0.0, test_mass=4.0, gravity=10, noise_k=1, test_exp_mod
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    x, exp, pos, out = test(p=70.0, i=130, d=4,
+    x, exp, pos, out = test(p=4.7016, i=8.1049, d=0.54069892,
                             test_mass=2.2,
-                            test_exp_model=[[0, 5],
-                                            [2.5, 5],
-                                            [5, 0],
-                                            [7, 1],
-                                            [9, 2],
+                            test_exp_model=[[1, 5],
+                                            #[2.5, 5],
+                                            [5, 5],
+                                            #[7, 1],
+                                            #[9, 2],
                                             ],
                             test_time=10,
                             dt=0.01,
+                            measure_delay=0.2,
                             noise_k=0.4,
-                            gravity=10)
+                            gravity=10,
+                            gamma=0,
+                            incpid=False,
+                            start_hight=0)
 
+    plt.subplot(211)
     plt.plot(x, exp, color="red")
     plt.plot(x, pos, color="blue")
-    #plt.plot(x, out, color="green")
-    plt.legend("epo")
+    plt.legend("ep")
+    plt.subplot(212)
+    plt.plot(x, out, color="green", alpha=0.6)
+    plt.legend("o")
     plt.show()
-
-
