@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="i2cylib",  # Replace with your own username
-    version="1.9.2",
+    version="1.9.3",
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
     description="A Python library contains a lot of useful functions and tools",
