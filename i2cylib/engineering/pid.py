@@ -44,6 +44,7 @@ class PID(object):
 
         self.running = False
         self.thread_flags = {"thread_calculator": False}
+        self.__out_t = 0
 
     def set_deltaT(self, dt):
         self.dt = dt
@@ -123,6 +124,7 @@ class PID(object):
         if self.running:
             return
         self.running = True
+        self.out = self.__out_t
         threading.Thread(target=self.__coreThread).start()
 
     def pause(self, wait=False):
@@ -132,11 +134,15 @@ class PID(object):
         :return:
         """
         self.running = False
+
         while wait:
             wait = False
             for i in self.thread_flags.keys():
                 if self.thread_flags[i]:
                     wait = True
+
+        self.__out_t = self.out
+        self.out = 0
 
     def output(self):
         return self.out
