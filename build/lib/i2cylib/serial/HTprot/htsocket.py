@@ -4,6 +4,7 @@
 # Project: I2cyLib
 # Filename: htsocket
 # Created on: 2022/5/31
+import time
 
 import serial
 from i2cylib.utils.logger.logger import *
@@ -27,6 +28,7 @@ class HTSocket:
         self.port = port
         self.client = None
         self.timeout = timeout
+        self.__lock = False
 
     def connect(self, port=None, baudrate=None, timeout=None):
         """
@@ -96,6 +98,10 @@ class HTSocket:
 
         # print(data)
 
+        while self.__lock:
+            time.sleep(0.001)
+        self.__lock = True
+
         while True:
             ret = self.client.write(data)
 
@@ -110,6 +116,8 @@ class HTSocket:
                 break
 
             time.sleep(0.05)
+
+        self.__lock = False
 
         return ret
 
