@@ -9,7 +9,7 @@ import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
-
+ 
 setuptools.setup(
     name="i2cylib",  # Replace with your own username
     version="1.9.4",
