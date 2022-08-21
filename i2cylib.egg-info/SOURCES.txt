@@ -15,6 +15,7 @@ i2cylib/crypto/iccode/__init__.py
 i2cylib/crypto/iccode/iccode.py
 i2cylib/crypto/keygen/__init__.py
 i2cylib/crypto/keygen/dynkey.py
+i2cylib/crypto/keygen/dynkey2.py
 i2cylib/crypto/keygen/time_key.py
 i2cylib/crypto/utils/__init__.py
 i2cylib/crypto/utils/operators.py
@@ -41,6 +42,9 @@ i2cylib/network/I2TCP/test.py
 i2cylib/network/i2tcp_basic/__init__.py
 i2cylib/network/i2tcp_basic/base_client.py
 i2cylib/network/i2tcp_basic/base_server.py
+i2cylib/science/__init__.py
+i2cylib/science/plot/__init__.py
+i2cylib/science/plot/plot.py
 i2cylib/serial/__init__.py
 i2cylib/serial/HTprot/__init__.py
 i2cylib/serial/HTprot/htsocket.py

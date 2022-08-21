@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
  
 setuptools.setup(
     name="i2cylib",  # Replace with your own username
-    version="1.9.5",
+    version="1.10.0",
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
     description="A Python library contains a lot of useful functions and tools",
@@ -33,7 +33,8 @@ setuptools.setup(
         'numpy',
         'tqdm',
         'rsa',
-        'pyserial'
+        'pyserial',
+        'matplotlib'
     ],
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
