@@ -62,7 +62,7 @@ class DynKey16:  # 16-Bytes dynamic key generator/matcher
 
 
 if __name__ == '__main__':
-    kg = DynKey16(b"testtest123")
+    kg = DynKey16(b"testtest123", flush_times=2)
     test_match = kg.keygen(-1)
     mea = sum(test_match) / len(test_match)
     print("key length: {}".format(len(test_match)))

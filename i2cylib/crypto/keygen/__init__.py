@@ -5,4 +5,5 @@
 # Created on: 2021/3/6
 
 from .dynkey import *
+from .dynkey2 import *
 from .time_key import *
