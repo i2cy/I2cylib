@@ -31,7 +31,7 @@ class DynKey16:  # 16-Bytes dynamic key generator/matcher
     def keygen(self, offset=0):  # 16-Bytes dynamic key generator
         key_unit = md5(self.key).digest()
         timestamp = int(time.time() / self.divide) + int(offset)
-        sub_key_unit = list(md5(timestamp.to_bytes(4, "big", signed=False)).digest())
+        sub_key_unit = list(md5(timestamp.to_bytes(4, "little", signed=False)).digest())
         sub_key_unit = list(md5(bytes(sub_key_unit) + key_unit).digest())
 
         for i in range(self.flush_time):
