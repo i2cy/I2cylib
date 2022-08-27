@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 setup.py
@@ -48,6 +49,8 @@ i2cylib/science/plot/plot.py
 i2cylib/serial/__init__.py
 i2cylib/serial/HTprot/__init__.py
 i2cylib/serial/HTprot/htsocket.py
+i2cylib/serial/utils/__init__.py
+i2cylib/serial/utils/device_scanner.py
 i2cylib/utils/__init__.py
 i2cylib/utils/args/__init__.py
 i2cylib/utils/args/decode_args.py
