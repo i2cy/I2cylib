@@ -5,4 +5,4 @@
 # Filename: __init__
 # Created on: 2022/8/27
 
-from device_scanner import *
+from .device_scanner import *
