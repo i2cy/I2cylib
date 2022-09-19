@@ -1,4 +1,3 @@
-LICENSE
 README.md
 pyproject.toml
 setup.py
@@ -69,6 +68,7 @@ i2cylib/utils/os/__init__.py
 i2cylib/utils/os/linux_hddtemp.py
 i2cylib/utils/os/win_tasklist.py
 i2cylib/utils/path/__init__.py
+i2cylib/utils/path/i2tec_home.py
 i2cylib/utils/path/path_fixer.py
 i2cylib/utils/path/read_path.py
 i2cylib/utils/path/scan_path.py

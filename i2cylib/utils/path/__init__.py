@@ -7,3 +7,4 @@
 from .path_fixer import *
 from .read_path import *
 from .scan_path import *
+from .i2tec_home import *
