@@ -388,7 +388,10 @@ def test():
     if not clt.connect():
         print("trying to connect to local test server")
         clt.reset()
-        clt = I2TCPclient("localhost", logger=Logger(filename="client_testrun.log"))
+        clt = I2TCPclient("localhost", key=b"testtest123", logger=Logger(filename="client_testrun.log"))
+        clt.connect()
+        time.sleep(2)
+        clt = I2TCPclient("localhost", key=b"basic", logger=Logger(filename="client_testrun.log"))
         clt.connect()
     gtc = ""
     for i in range(3):

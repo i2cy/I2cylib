@@ -26,9 +26,9 @@ class Server(I2TCPserver):
         I2TCP server class  I2TCP服务端类
 
         :param key: str(or bytes), dynamic key for authentication  对称动态密钥
-        :param port: int, server port that to be bond  服务端要绑定的端口号
+        :param port: int, server port that to be bonded  服务端要绑定的端口号
         :param max_con: int, max TCP connection(s) that allowed
-                        to be accept at the same time  最大同时接受的连接数
+                        to be accepted at the same time  最大同时接受的连接数
         :param logger: Logger, server log output object  日志器（来自于i2cylib.utils.logger.logger.Logger）
         :param secured_connection: bool, enable encryption in connection  启用安全加密层
         :param max_buffer_size: int, max package buffer size for every handler  包缓冲区最大大小（单位：个）
@@ -56,7 +56,7 @@ class Server(I2TCPserver):
 
     def _mainloop_thread(self):
         """
-        over write server main loop
+        overwrite server main loop
 
         :return: None
         """
@@ -147,7 +147,7 @@ class Handler(I2TCPhandler):
 
         if self.flag_secured_connection_built:  # 安全连接加密
             assert isinstance(self.coder_pack, Iccode)
-            while self.flag_pack_busy:
+            while self.flag_pack_busy and self.live:
                 time.sleep(0.001)
             self.flag_pack_busy = True
             self.coder_pack.reset()

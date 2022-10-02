@@ -24,8 +24,11 @@ if __name__ == '__main__':
     logger = Logger()
     srv = Server(port=24678, key=b"test", logger=logger, secured_connection=True)
     clt = Client(port=24678, hostname="127.0.0.1", key=b"test", logger=logger)
+    ex_clt = Client(port=24678, hostname="127.0.0.1", key=b"asds", logger=logger)
 
     srv.start()
+    ex_clt.connect()
+    time.sleep(1)
     clt.connect()
 
     data = b""
