@@ -470,6 +470,9 @@ class I2TCPhandler:
             else:
                 self.logger.WARNING("{} unauthorized connection, key received: {}".format(self.log_header,
                                                                                           dynamic_key))
+                raise Exception("{} unauthorized connection, key received: {}".format(self.log_header,
+                                                                                      dynamic_key))
+
             feedback = b""
             while len(feedback) < 2:
                 feedback += self.srv.recv(2 - len(feedback))
