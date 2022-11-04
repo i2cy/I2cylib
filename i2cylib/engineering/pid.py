@@ -283,28 +283,31 @@ def test(p=1.0, i=0.0, d=0.0,
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    x, exp, pos, out = test(p=4.7016, i=8.1049, d=0.54069892,
-                            test_mass=2.2,
-                            test_exp_model=[[1, 5],
-                                            #[2.5, 5],
-                                            [5, 5],
-                                            #[7, 1],
-                                            #[9, 2],
+    x, exp, pos, out = test(p=22.7016, i=41.1049, d=0.01069892,
+                            test_mass=5.1,
+                            test_exp_model=[[1, 24],
+                                            # [2.5, 5],
+                                            # [5, 5],
+                                            # [7, 1],
+                                            # [9, 2],
                                             ],
                             test_time=10,
                             dt=0.01,
-                            measure_delay=0.2,
-                            noise_k=0.4,
+                            measure_delay=0.02,
+                            noise_k=0.1,
                             gravity=10,
                             gamma=0,
                             incpid=False,
                             start_hight=0)
 
-    plt.subplot(211)
-    plt.plot(x, exp, color="red")
+    # plt.subplot(211)
+    # plt.plot(x, exp, color="red")
     plt.plot(x, pos, color="blue")
-    plt.legend("ep")
-    plt.subplot(212)
-    plt.plot(x, out, color="green", alpha=0.6)
-    plt.legend("o")
+    plt.xlabel("t(s)")
+    plt.ylabel("Udc(V)")
+    plt.grid()
+    # plt.legend("ep")
+    # plt.subplot(212)
+    # plt.plot(x, out, color="green", alpha=0.6)
+    # plt.legend("o")
     plt.show()

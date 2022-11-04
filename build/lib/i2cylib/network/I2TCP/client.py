@@ -21,7 +21,7 @@ class Client(I2TCPclient):
 
     def __init__(self, hostname, port=24678, key=b"I2TCPbasicKey",
                  watchdog_timeout=15, logger=None,
-                 max_buffer_size=100):
+                 max_buffer_size=100, auto_reconnect=True):
         """
         I2TCPclient 客户端通讯类
 
@@ -31,6 +31,8 @@ class Client(I2TCPclient):
         :param watchdog_timeout: int, watchdog timeout 守护线程超时时间
         :param logger: Logger, client log output object 日志器（来自于i2cylib.utils.logger.logger.Logger）
         :param max_buffer_size: int, max pakcage buffer size 最大包缓冲池大小（单位：个）
+        :param auto_reconnect: bool, weather should the client auto reconnect to server
+        when disconnect unexpectedly  是否自动重连
         """
         super(Client, self).__init__(hostname, port=port, key=key,
                                      watchdog_timeout=watchdog_timeout,
@@ -48,6 +50,8 @@ class Client(I2TCPclient):
         self.flag_pack_busy = False
         self.flag_depack_busy = False
         self.flag_secured_connection_built = False
+
+        self.__auto_reconnect = auto_reconnect
 
         self.version = VERSION.encode()
 
@@ -108,6 +112,9 @@ class Client(I2TCPclient):
         :return: None
         """
 
+        if "receiver" in self.threads.keys() and self.threads["receiver"]:
+            return
+
         self.threads.update({"receiver": True})
         local_header = "[receiver]"
         self.logger.DEBUG("{} {} thread started".format(
@@ -143,7 +150,7 @@ class Client(I2TCPclient):
         self.threads.update({"receiver": False})
         self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
 
-    def reset(self):
+    def reset(self, kill_threads=True):
         """
         reset I2TCP connection (close connection)  关闭连接
 
@@ -158,6 +165,20 @@ class Client(I2TCPclient):
         self.flag_depack_busy = False
         self.flag_secured_connection_built = False
         self.package_buffer = []
+
+        if kill_threads:
+            auto_reconnect_save = self.__auto_reconnect
+            self.live = False
+            self.__auto_reconnect = False
+            wait = True
+            while wait:
+                wait = False
+                for ele in self.threads:
+                    if self.threads[ele]:
+                        wait = True
+                        break
+                time.sleep(0.02)
+            self.__auto_reconnect = auto_reconnect_save
 
     def send(self, data):
         """
@@ -195,22 +216,101 @@ class Client(I2TCPclient):
 
         return ret
 
-    def connect(self, timeout=10):
+    def _watchdog_thread(self):
+        """
+        watchdog service, keeps connection available
+
+        :return: None
+        """
+
+        if "watchdog" in self.threads.keys() and self.threads["watchdog"]:
+            return
+
+        self.threads.update({"watchdog": True})
+        local_header = "[watchdog]"
+        self.logger.DEBUG("{} {} thread started".format(self.log_header, local_header))
+
+        try:
+            tick = 0
+            while self.live:
+                if tick >= 4:
+                    tick = 0
+                    if self.watchdog_waitting > self.watchdog_timeout:
+                        self.logger.ERROR("{} {} server seems not responding, disconnecting...".format(self.log_header,
+                                                                                                       local_header))
+                        self.reset(kill_threads=False)
+
+                if self.clt is None or not self.connected:
+                    self.logger.INFO("{} {} connection lost".format(self.log_header, local_header))
+                    self.reset(kill_threads=False)
+                    if not self.__auto_reconnect:
+                        break
+
+                    disconnected_ts = time.time()
+
+                    wait = True
+                    while wait:
+                        wait = False
+                        for ele in self.threads:
+                            if self.threads[ele] and ele != "watchdog":
+                                wait = True
+                                break
+                        time.sleep(0.02)
+
+                    cnt = 0
+                    ci = 150
+                    while self.__auto_reconnect:
+                        if ci >= 150:
+                            cnt += 1
+                            self.logger.DEBUG("{} {} trying to reconnect to server, attempt {}".format(
+                                self.log_header, local_header, cnt
+                            ))
+                            ret = self.connect()
+                            if ret:
+                                self.logger.INFO("{} {} server reconnected after {:.1f}s".format(
+                                    self.log_header, local_header, time.time() - disconnected_ts
+                                ))
+                                break
+                            ci = 0
+                        time.sleep(0.1)
+                        ci += 1
+
+                time.sleep(0.5)
+                tick += 1
+                self.watchdog_waitting += 1
+        except Exception as err:
+            if self.live:
+                self.logger.ERROR("{} {} watchdog error, {}".format(self.log_header, local_header, err))
+
+        self.logger.DEBUG("{} {} thread stopped".format(self.log_header, local_header))
+        self.threads.update({"watchdog": False})
+
+    def connect(self, timeout=10, auto_reconnect=None):
         """
         connect to server  连接到I2TCP服务器
 
         :param timeout: int, connection timeout 设置超时时间
+        :param auto_reconnect: bool, should client reconnect to server when connection lost unexpectedly 自动重连
         :return: bool, connection status 连接状态（成功为True）
         """
 
         if self.connected:
-            return
-        self.reset()
+            return self.connected
+
+        if auto_reconnect is not None:
+            self.__auto_reconnect = auto_reconnect
+
+        self.reset(kill_threads=False)
         ret = super(Client, self).connect(timeout=timeout)
         self.connection_timeout = timeout
-
         if ret:
             threading.Thread(target=self._receiver_thread).start()
+        elif self.__auto_reconnect:
+            self.live = True
+            threading.Thread(target=self._watchdog_thread).start()
+            return self.connected
+        else:
+            return self.connected
 
         flag = self.get(timeout=self.connection_timeout)
         if flag is None:
@@ -218,7 +318,7 @@ class Client(I2TCPclient):
                 self.log_header
             ))
             self.connected = False
-            self.reset()
+            self.reset(kill_threads=False)
             return self.connected
 
         flag = flag.split(b"\a")
@@ -230,7 +330,7 @@ class Client(I2TCPclient):
             except Exception as err:
                 self.logger.ERROR("{} broken rsa key received, {}".format(self.log_header, flag[1]))
                 self.connected = False
-                self.reset()
+                self.reset(kill_threads=False)
                 return self.connected
 
             try:
@@ -247,7 +347,7 @@ class Client(I2TCPclient):
                     self.log_header, err
                 ))
                 self.connected = False
-                self.reset()
+                self.reset(kill_threads=False)
                 return self.connected
 
             feedback = self.get(timeout=self.connection_timeout)
@@ -256,19 +356,29 @@ class Client(I2TCPclient):
                     self.log_header
                 ))
                 self.connected = False
-                self.reset()
-                return self.connected
+                self.reset(kill_threads=False)
+
 
             self.logger.DEBUG("{} secured connection built".format(self.log_header))
             self.flag_secured_connection_built = True
+            self.connected = True
 
         elif flag[0] == b"AUTHENTICATION_ONLY":
             self.logger.DEBUG("{} connection built".format(self.log_header))
+            self.connected = True
 
         else:
             self.logger.ERROR("{} failed to build connection, unexpected flag received, {}".format(
                 self.log_header, flag
             ))
             self.connected = False
-            self.reset()
-            return self.connected
+            self.reset(kill_threads=False)
+
+        return self.connected
+
+
+if __name__ == '__main__':
+    clt = Client("127.0.0.1")
+    clt.connect()
+    input("  *** press ENTER to close ***")
+    clt.reset()
