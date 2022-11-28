@@ -19,3 +19,4 @@ class EasyPlot2D(object):
         """
         if isinstance(data, str):
             if "\t" in data:
+                pass

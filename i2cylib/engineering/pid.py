@@ -291,7 +291,7 @@ if __name__ == '__main__':
                                             # [7, 1],
                                             # [9, 2],
                                             ],
-                            test_time=10,
+                            test_time=1,
                             dt=0.01,
                             measure_delay=0.02,
                             noise_k=0.1,
@@ -300,14 +300,14 @@ if __name__ == '__main__':
                             incpid=False,
                             start_hight=0)
 
-    # plt.subplot(211)
-    # plt.plot(x, exp, color="red")
+    plt.subplot(211)
+    plt.plot(x, exp, color="red")
     plt.plot(x, pos, color="blue")
     plt.xlabel("t(s)")
     plt.ylabel("Udc(V)")
     plt.grid()
-    # plt.legend("ep")
-    # plt.subplot(212)
-    # plt.plot(x, out, color="green", alpha=0.6)
-    # plt.legend("o")
+    plt.legend("ep")
+    plt.subplot(212)
+    plt.plot(x, out, color="green", alpha=0.6)
+    plt.legend("o")
     plt.show()

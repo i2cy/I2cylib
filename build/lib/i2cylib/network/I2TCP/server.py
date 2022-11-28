@@ -176,6 +176,7 @@ class Handler(I2TCPhandler):
 
     def _recv(self):
         data = super(Handler, self)._recv()
+        local_header = "[receiver]"
 
         if self.flag_secured_connection_built:  # 安全连接解密
             assert isinstance(self.coder_depack, Iccode)
@@ -183,8 +184,12 @@ class Handler(I2TCPhandler):
                 time.sleep(0.001)
             if data:
                 self.flag_depack_busy = True
-                self.coder_depack.reset()
-                data = self.coder_depack.decode(data)
+                try:
+                    self.coder_depack.reset()
+                    data = self.coder_depack.decode(data)
+                except Exception as err:
+                    self.logger.ERROR("{} {} failed to depack package {}".format(
+                        self.log_header, local_header, err))
                 self.flag_depack_busy = False
 
         return data
@@ -199,6 +204,7 @@ class Handler(I2TCPhandler):
 
         if self.parent.secured_connection:
             self.send(b"SECURED_SESSION_KEY_REQUIRED\a" + self.parent.public_key.save_pkcs1("PEM"))
+            self.logger.DEBUG("{} public key sent".format(self.log_header))
             session_key = self.get(timeout=self.connection_timeout)
             if session_key is None:
                 self.logger.ERROR("{} failed to create secured session, connection denied".format(self.log_header))

@@ -450,6 +450,7 @@ class I2TCPhandler:
         try:
             rand_num = random_keygen(64)
             self.srv.sendall(rand_num)
+            self.logger.DEBUG("{} random seed sent".format(self.log_header))
 
             key_sha256 = sha256()
             key_sha256.update(self.parent.key)
@@ -459,7 +460,13 @@ class I2TCPhandler:
 
             dynamic_key = b""
             while len(dynamic_key) < 64:
-                dynamic_key += self.srv.recv(64 - len(dynamic_key))
+                dat = self.srv.recv(64 - len(dynamic_key))
+                if dat == b"":
+                    self.logger.DEBUG("{} connection lost".format(self.log_header))
+                    return False
+                dynamic_key += dat
+
+            self.logger.DEBUG("{} dynamic key received".format(self.log_header))
 
             dynamic_key = mix_coder.decode(dynamic_key)
 
@@ -474,7 +481,11 @@ class I2TCPhandler:
 
             feedback = b""
             while len(feedback) < 2:
-                feedback += self.srv.recv(2 - len(feedback))
+                dat = self.srv.recv(2 - len(feedback))
+                if dat == b"":
+                    self.logger.DEBUG("{} connection lost".format(self.log_header))
+                    return False
+                feedback += dat
             if feedback != b"OK":
                 raise Exception("invalid feedback, {}".format(feedback))
 
