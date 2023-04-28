@@ -127,7 +127,7 @@ def hander(con):
                             ret = DATABASE.switch_autocommit()
 
                         elif cmd == "create_table":
-                            table_object = SqlTable(args["name"])
+                            table_object = NewSqlTable(args["name"])
                             table_object.table = args["table"]
                             DATABASE.create_table(table_object)
 
@@ -184,7 +184,7 @@ def hander(con):
 
                         elif cmd == "get":
                             ret = tb.get(key=args["key"],
-                                         column_name=args["column_name"],
+                                         column_names=args["column_names"],
                                          primary_index_column=args["primary_index_column"],
                                          orderby=args["orderby"],
                                          asc_order=args["asc_order"])

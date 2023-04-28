@@ -4,118 +4,137 @@
 # Filename: sqlitedb
 # Created on: 2021/2/16
 # Description: A pythonfied sqlite3 database control api class
-##VERSION: 1.1
+##VERSION: 1.2
 
 
+from typing import Any
 import sqlite3
 
 
-class SqliteDB:
+class Sqlimit(object):
+    """
+    sqlite data limits
+    """
+    NOT_NULL = "NOT NULL"
+    DEFAULT = "DEFAULT"
+    UNIQUE = "UNIQUE"
+    PRIMARY_KEY = "PRIMARY KEY"
 
-    def __init__(self, database=None):
-        self.filename = database
-        self.database = None
-
-        self.autocommit = False
-
-        self.cursors = []
-
-    def _connection_check(self):
-        if self.database is None:
-            raise Exception("connection has not been built yet, "
-                            "you have to connect to a database first")
-
-    def _undo_cursors(self):
-        valids = []
-        for ele in self.cursors:
-            try:
-                ele.undo()
-                valids.append(ele)
-            except:
-                pass
-        self.cursors = valids
-
-    def _auto_commit(self):
-        if self.autocommit:
-            self.database.commit()
-
-    def connect(self, database=None, timeout=5):
-        if database is None:
-            database = self.filename
-
-        self.database = sqlite3.connect(database, timeout=timeout)
-
-    def switch_autocommit(self):
-        if self.autocommit:
-            self.autocommit = False
-        else:
-            self.autocommit = True
-
-        return self.autocommit
-
-    def create_table(self, table_object):
-        self._connection_check()
-        if not isinstance(table_object, SqlTable):
-            raise TypeError("table_object must be a SqlTableFrame object")
-        cursor = self.database.cursor()
-
-        table_str = "{} (".format(table_object.name)
-        for ele in table_object.table:
-            table_str += "{} {}, ".format(ele[0], ele[1])
-        table_str = table_str[:-2] + ")"
-        cmd = "CREATE TABLE {}".format(table_str)
-        cursor.execute(cmd)
-        self._auto_commit()
-
-    def drop_table(self, table_name):
-        self._connection_check()
-        cursor = self.database.cursor()
-
-        cmd = "DROP TABLE {}".format(table_name)
-        cursor.execute(cmd)
-        self._auto_commit()
-
-    def list_all_tables(self):
-        self._connection_check()
-        cursor = self.database.cursor()
-
-        cursor.execute("select name from sqlite_master where type='table' order by name")
-
-        ret = cursor.fetchall()
-        ret = [ele[0].upper() for ele in ret]
-        cursor.close()
-
+    def CHECK(sentence):
+        ret = "CHECK({})".format(sentence)
         return ret
 
-    def select_table(self, table_name):
-        table_name = table_name.upper()
-        self._connection_check()
-        if not table_name in self.list_all_tables():
-            raise Exception("cannot find table \"{}\" in database".format(table_name))
-        ret = SqliteTableCursor(self, table_name)
-        return ret
 
-    def undo(self):
-        self._connection_check()
-        if self.autocommit:
-            raise Exception("cannot undo since the autocommit mode is on")
-        self.database.rollback()
-        self._undo_cursors()
-
-    def commit(self):
-        self._connection_check()
-        self.database.commit()
-
-    def close(self):
-        self._connection_check()
-        self.commit()
-        self.database.close()
-        self.database = None
+class SqlDtype(object):
+    """
+    sqlite data types
+    """
+    NULL = "NULL"
+    TEXT = "TEXT"
+    INTEGER = "INTEGER"
+    REAL = "REAL"
+    BLOB = "BLOB"
 
 
-class SqliteTableCursor:
+class NewSqlTable(object):
 
-    def __init__(self, upper, table_name):
+    def __init__(self, tableName: str):
+        """
+        initialize an NewSqlTable object
+
+        :param tableName: str
+        """
+        self.name = tableName
+        self.table = []
+
+    def __str__(self) -> str:
+        """
+        print table details
+        :return: str
+        """
+        out = "{}({} column):\n".format(self.name, len(self.table))
+        line0 = "+"
+        line1 = "|"
+        line2 = "|"
+        for ele in self.table:
+            line1_len = len(ele[0])
+            for i in ele[0]:
+                if ord(i) >= 256:
+                    line1_len += 1
+            max_unit_len = line1_len
+            line2_len = len(ele[1])
+            for i in ele[1]:
+                if ord(i) >= 256:
+                    line2_len += 1
+            if line2_len > max_unit_len:
+                max_unit_len = line2_len
+
+            line0 += "-" * (max_unit_len + 2) + "+"
+            line1 += " {}".format(ele[0]) \
+                     + " " * (max_unit_len - line1_len) + " |"
+            line2 += " {}".format(ele[1]) \
+                     + " " * (max_unit_len - line2_len) + " |"
+        out += line0 + "\n"
+        out += line1 + "\n"
+        out += line0 + "\n"
+        out += line2 + "\n"
+        out += line0 + "\n"
+
+        return out
+
+    def add_column(self, name: str, dtype: SqlDtype):
+        """
+        add one column to the current table, with increased index
+
+        :param name: str, column name
+        :param dtype: SqlDtype
+        :return: None
+        """
+        self.table.append([str(name), dtype])
+
+    def remove_column(self, index: int):
+        """
+        remove one column from the current table
+
+        :param index: int, column index
+        :return: None
+        """
+        self.table.pop(index)
+
+    def add_limit(self, index: int, limit: Sqlimit):
+        """
+        add limit to one column with specified index
+
+        :param index: int, column index
+        :param limit: Sqlimit
+        :return: None
+        """
+        if index not in range(len(self.table)):
+            raise IndexError("column {} not found".format(index))
+        if not isinstance(limit, str):
+            raise TypeError("limit must be str")
+        self.table[index][1] += " {}".format(limit)
+
+    def insert_column(self, index: int, name: str, dtype: SqlDtype):
+        """
+        insert a column to the specified column
+
+        :param index: int, column index
+        :param name: str, column name
+        :param dtype: SqlDtype
+        :return: None
+        """
+        self.table.insert(index, [name, dtype])
+
+
+class SqlTable:
+
+    def __init__(self, upper, table_name: str):
+        """
+        a Table object of Sqlite database, iterable, subscriptable
+        :param upper: SqliteDB
+        :param table_name: str, name of table
+        """
         self.upper = upper
         self.name = table_name
         self.table_info = None
@@ -124,7 +143,11 @@ class SqliteTableCursor:
         self.cursor = self.upper.database.cursor()
         self.offset = 0
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        get length of current table
+        :return: int
+        """
         cursor = self.upper.database.cursor()
         cmd = "SELECT COUNT(*) FROM {}".format(self.name)
         cursor.execute(cmd)
@@ -134,6 +157,10 @@ class SqliteTableCursor:
         return self.length
 
     def __iter__(self):
+        """
+        return iterables
+        :return:
+        """
         self.cursor.execute("SELECT * FROM {}".format(self.name))
         if self.offset > 0:
             self.cursor.fetchmany(self.offset)
@@ -141,13 +168,22 @@ class SqliteTableCursor:
         return self
 
     def __next__(self):
+        """
+        return next item of iterables
+        :return:
+        """
         ret = self.cursor.fetchone()
         if ret is None:
             raise StopIteration
         self.offset += 1
         return ret
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> list:
+        """
+        get item(s) from current table
+        :param item: int or slice(), index
+        :return: list, one item or list of items
+        """
         valid = isinstance(item, int) or isinstance(item, slice)
         if not valid:
             raise KeyError("index must be integrate or slices")
@@ -194,7 +230,13 @@ class SqliteTableCursor:
 
         return ret
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: int, value):
+        """
+        set an item with specific index and value
+        :param key: int, index
+        :param value: Any
+        :return:
+        """
         if not isinstance(key, int):
             raise KeyError("index must be integrate")
 
@@ -227,18 +269,32 @@ class SqliteTableCursor:
 
         self.update(data=value, index_key=target)
 
-    def seek(self, offset):
+    def seek(self, offset: int):
+        """
+        set current offset when iterate
+        :param offset: int
+        :return:
+        """
         cursor = self.upper.database.cursor()
         if offset < 0:
             offset = len(self) + offset
         self.offset = offset
 
     def undo(self):
+        """
+        attempt to undo all changes that have not been committed yet
+        :return:
+        """
         if self.upper.autocommit:
             raise Exception("cannot undo since the autocommit mode is on")
         self.length = None
 
     def _data2sqlstr(self, data):
+        """
+        convert python items to SQL data string
+        :param data: Any
+        :return: str, converted SQL data string
+        """
         key = None
         if isinstance(data, int):
             key = str(data)
@@ -252,6 +308,10 @@ class SqliteTableCursor:
         return key
 
     def get_table_info(self):
+        """
+        get current table information of columns. Will also update values in self.table_info
+        :return: list, list of information of columns
+        """
         cursor = self.upper.database.cursor()
 
         cursor.execute("PRAGMA table_info({})".format(self.name))
@@ -268,6 +328,11 @@ class SqliteTableCursor:
         return ret
 
     def append(self, data):
+        """
+        append a line of data into current table list.
+        :param data: list, tuple, iterable object
+        :return:
+        """
         cursor = self.upper.database.cursor()
 
         columns = ""
@@ -296,6 +361,10 @@ class SqliteTableCursor:
         self.length += 1
 
     def empty(self):  # delete all values in table
+        """
+        delete all values in table including lines and data
+        :return:
+        """
         cursor = self.upper.database.cursor()
 
         cmd = "DELETE FROM {}".format(self.name)
@@ -304,9 +373,14 @@ class SqliteTableCursor:
         self.upper._auto_commit()
         cursor.close()
 
-    # index_name can be automatically set as the primary key in table.
-    # Or you can define it as it follows the SQLite3 WHERE logic
-    def pop(self, key, primary_index_column=None):
+    def pop(self, key, primary_index_column=None) -> list:
+        """
+        remove line(s) of data from current table and return
+        :param key: Any(int, bool, str, float)
+        :param primary_index_column: str (optional), index_name can be automatically set as the primary key in table.
+        Or you can define it as it follows the SQLite3 WHERE logic
+        :return: list, list of item(s)
+        """
         cursor = self.upper.database.cursor()
 
         if primary_index_column is None:
@@ -323,23 +397,28 @@ class SqliteTableCursor:
 
         key = self._data2sqlstr(key)
 
+        ret = self.get(key=key, primary_index_column=primary_index_column)
+
         cmd = "DELETE FROM {} WHERE {}={};".format(self.name,
                                                    primary_index_column, key)
         cursor.execute(cmd)
         self.upper._auto_commit()
         cursor.close()
 
-    def get(self, key=None, column_name="*", primary_index_column=None,
-            orderby=None, asc_order=True):
+        return ret
+
+    def get(self, key: Any = None, column_names: str = "*",
+            primary_index_column: str = None,
+            orderby: str = None, asc_order: bool = True) -> list:
         """
         get lines of data with specified config
-
-        :param key: int(or str, tuple), index(s)
-        :param column_name: str, standard SQL (e.g. "Name, ID, GENDER, AGE")
-        :param primary_index_column: int(or str), column to be indexed
-        :param orderby:
-        :param asc_order:
-        :return:
+        :param key: int(or str, tuple), index(s) (e.g. 1, (1, 3, 5), ("male", "female"))
+        :param column_names: str, standard SQL (e.g. "Name, ID, GENDER, AGE", "Name")
+        :param primary_index_column: int or str (optional, default: default primary index column
+        in table), column to be indexed
+        :param orderby: str (optional, default: first column), sort lines by this column
+        :param asc_order: bool (optional, default: True), whether returned value should be ordered by ascending or descending
+        :return: list, list of item(s)
         """
 
         cursor = self.upper.database.cursor()
@@ -368,7 +447,7 @@ class SqliteTableCursor:
                 orderby = primary_index_column
 
         if key is None:
-            cmd = "SELECT {} from {} ORDER BY {} {}".format(column_name,
+            cmd = "SELECT {} from {} ORDER BY {} {}".format(column_names,
                                                             self.name,
                                                             orderby,
                                                             order
@@ -378,7 +457,7 @@ class SqliteTableCursor:
             if len(key) != 2:
                 cursor.close()
                 raise KeyError("index range tuple must have 2 elements")
-            cmd = "SELECT {} from {} WHERE {} BETWEEN {} AND {} ORDER BY {} {}".format(column_name,
+            cmd = "SELECT {} from {} WHERE {} BETWEEN {} AND {} ORDER BY {} {}".format(column_names,
                                                                                        self.name,
                                                                                        primary_index_column,
                                                                                        self._data2sqlstr(key[0]),
@@ -394,7 +473,7 @@ class SqliteTableCursor:
             for ele in key:
                 key_str += "{}, ".format(self._data2sqlstr(ele))
             key_str = key_str[:-2]
-            cmd = "SELECT {} from {} WHERE {} IN ({}) ORDER BY {} {}".format(column_name,
+            cmd = "SELECT {} from {} WHERE {} IN ({}) ORDER BY {} {}".format(column_names,
                                                                              self.name,
                                                                              primary_index_column,
                                                                              key_str,
@@ -403,7 +482,7 @@ class SqliteTableCursor:
 
         else:
             key = self._data2sqlstr(key)
-            cmd = "SELECT {} FROM {} WHERE {}={} ORDER BY {} {}".format(column_name,
+            cmd = "SELECT {} FROM {} WHERE {}={} ORDER BY {} {}".format(column_names,
                                                                         self.name,
                                                                         primary_index_column,
                                                                         key,
@@ -418,15 +497,14 @@ class SqliteTableCursor:
 
     def update(self, data,
                index_key=None,
-               column_names=None,
-               primary_index_column=None):
+               column_names: list = None,
+               primary_index_column: str = None):
         """
-        update data with specified
-
+        update data with specified search values
         :param data: list(or tuple)
         :param index_key: int(or str), index
         :param column_names: list, columns to be fetched
-        :param primary_index_column: str, the column to be index
+        :param primary_index_column: str, the column to be indexed
         :return: None
         """
 
@@ -476,110 +554,165 @@ class SqliteTableCursor:
         cursor.close()
 
 
-class SqlTable(object):
+class SqliteDB:
 
-    def __init__(self, tableName):
+    def __init__(self, database: str = None):
         """
-        initialize an SqlTable object
-
-        :param tableName: str
+        Create a SqliteDB class with specific filename (optional)
+        :param database: str (optional), database filename
         """
-        self.name = tableName
-        self.table = []
+        self.filename = database
+        self.database = None
 
-    def __str__(self):
-        out = "{}({} column):\n".format(self.name, len(self.table))
-        line0 = "+"
-        line1 = "|"
-        line2 = "|"
-        for ele in self.table:
-            line1_len = len(ele[0])
-            for i in ele[0]:
-                if ord(i) >= 256:
-                    line1_len += 1
-            max_unit_len = line1_len
-            line2_len = len(ele[1])
-            for i in ele[1]:
-                if ord(i) >= 256:
-                    line2_len += 1
-            if line2_len > max_unit_len:
-                max_unit_len = line2_len
+        self.autocommit = False
 
-            line0 += "-" * (max_unit_len + 2) + "+"
-            line1 += " {}".format(ele[0]) \
-                     + " " * (max_unit_len - line1_len) + " |"
-            line2 += " {}".format(ele[1]) \
-                     + " " * (max_unit_len - line2_len) + " |"
-        out += line0 + "\n"
-        out += line1 + "\n"
-        out += line0 + "\n"
-        out += line2 + "\n"
-        out += line0 + "\n"
+        self.cursors = []
 
-        return out
-
-    def add_column(self, name, dtype):
+    def _connection_check(self):
         """
-        add one column to the current table
-
-        :param name: str, column name
-        :param dtype: SqlDtype
-        :return: None
+        check if the connection to database if valid, otherwise throw out an exception
+        :return:
         """
-        self.table.append([str(name), dtype])
+        if self.database is None:
+            raise Exception("connection has not been built yet, "
+                            "you have to connect to a database first")
 
-    def remove_column(self, index):
+    def _undo_cursors(self):
         """
-        remove one column from the current table
-
-        :param index: int, column index
-        :return: None
+        attempt undo every changes
+        :return:
         """
-        self.table.pop(index)
+        valids = []
+        for ele in self.cursors:
+            try:
+                ele.undo()
+                valids.append(ele)
+            except:
+                pass
+        self.cursors = valids
 
-    def add_limit(self, index, limit):
+    def _auto_commit(self):
         """
-        add limit to one specified column
-
-        :param index: int, column index
-        :param limit: Sqlimit
-        :return: None
+        auto commit if auto-commit mode is enabled
+        :return:
         """
-        if index not in range(len(self.table)):
-            raise IndexError("column {} not found".format(index))
-        if not isinstance(limit, str):
-            raise TypeError("limit must be str")
-        self.table[index][1] += " {}".format(limit)
+        if self.autocommit:
+            self.database.commit()
 
-    def insert_column(self, index, name, dtype):
+    def connect(self, database: str = None, timeout: int = 5):
         """
-        insert a column to the specified column
-
-        :param index: int, column index
-        :param name: str, column name
-        :param dtype: SqlDtype
-        :return: None
+        Connect to a database, specify a database filename otherwise it will use the default value set by init
+        :param database: str (optional), database filename
+        :param timeout: int (optional, default: 5), timeout value of sqliteDB in seconds
+        :return:
         """
-        self.table.insert(index, [name, dtype])
+        if database is None:
+            database = self.filename
 
+        self.database = sqlite3.connect(database, timeout=timeout)
 
-class Sqlimit(object):
-    NOT_NULL = "NOT NULL"
-    DEFAULT = "DEFAULT"
-    UNIQUE = "UNIQUE"
-    PRIMARY_KEY = "PRIMARY KEY"
+    def switch_autocommit(self) -> bool:
+        """
+        Switch auto-commit mode on or off. If auto commit is on, everything you do will commit to database
+        immediately.
+        :return: bool, auto-commit current value of enabled
+        """
+        if self.autocommit:
+            self.autocommit = False
+        else:
+            self.autocommit = True
 
-    def CHECK(sentence):
-        ret = "CHECK({})".format(sentence)
+        return self.autocommit
+
+    def create_table(self, table_object: NewSqlTable):
+        """
+        Create a Table in database
+        :param table_object: NewSqlTable, table object
+        :return:
+        """
+        self._connection_check()
+        if not isinstance(table_object, NewSqlTable):
+            raise TypeError("table_object must be a SqlTableFrame object")
+        cursor = self.database.cursor()
+
+        table_str = "{} (".format(table_object.name)
+        for ele in table_object.table:
+            table_str += "{} {}, ".format(ele[0], ele[1])
+        table_str = table_str[:-2] + ")"
+        cmd = "CREATE TABLE {}".format(table_str)
+        cursor.execute(cmd)
+        self._auto_commit()
+
+    def drop_table(self, table_name: str):
+        """
+        delete a table with specific name
+        :param table_name: str
+        :return:
+        """
+        self._connection_check()
+        cursor = self.database.cursor()
+
+        cmd = "DROP TABLE {}".format(table_name)
+        cursor.execute(cmd)
+        self._auto_commit()
+
+    def list_all_tables(self) -> list:
+        """
+        list all tables in database
+        :return: list, list of names
+        """
+        self._connection_check()
+        cursor = self.database.cursor()
+
+        cursor.execute("select name from sqlite_master where type='table' order by name")
+
+        ret = cursor.fetchall()
+        ret = [ele[0].upper() for ele in ret]
+        cursor.close()
+
         return ret
 
+    def select_table(self, table_name: str) -> SqlTable:
+        """
+        select a table and return SqlTable object
+        :param table_name: str
+        :return: SqlTable
+        """
+        table_name = table_name.upper()
+        self._connection_check()
+        if not table_name in self.list_all_tables():
+            raise Exception("cannot find table \"{}\" in database".format(table_name))
+        ret = SqlTable(self, table_name)
+        return ret
 
-class SqlDtype(object):
-    NULL = "NULL"
-    TEXT = "TEXT"
-    INTEGER = "INTEGER"
-    REAL = "REAL"
-    BLOB = "BLOB"
+    def undo(self):
+        """
+        attempt to undo changes that haven't been committed
+        :return:
+        """
+        self._connection_check()
+        if self.autocommit:
+            raise Exception("cannot undo since the autocommit mode is on")
+        self.database.rollback()
+        self._undo_cursors()
+
+    def commit(self):
+        """
+        commit current changes to database
+        :return:
+        """
+        self._connection_check()
+        self.database.commit()
+
+    def close(self):
+        """
+        close connection to database
+        :return:
+        """
+        self._connection_check()
+        self.commit()
+        self.database.close()
+        self.database = None
 
 
 def test():
@@ -593,7 +726,7 @@ def test():
     print("Tables in DB:\n{}".format(tables))
     if create:
         print("creating table COMPANY")
-        tb = SqlTable("COMPANY")
+        tb = NewSqlTable("COMPANY")
         tb.add_column("ID", SqlDtype.INTEGER)
         tb.add_column("name", SqlDtype.TEXT)
         tb.add_column("index_1", SqlDtype.REAL)
@@ -657,7 +790,7 @@ def test():
     print("get item test:")
     for i in range(len(tc)):
         print(tc[i])
-        print(tc[-i-1])
+        print(tc[-i - 1])
     print("get item test[2:4]:")
     print(tc[2:4])
     print("get item test[2:-1]:")

@@ -9,7 +9,7 @@ from i2cylib.database.I2DB.i2cydbserver import ModLogger
 from i2cylib.utils.logger import *
 from i2cylib.utils.stdout import *
 from i2cylib.network.i2tcp_basic.base_client import *
-from i2cylib.database.sqlite.sqlitedb import Sqlimit, SqlTable, SqlDtype
+from i2cylib.database.sqlite.sqlitedb import Sqlimit, NewSqlTable, SqlDtype
 from i2cylib.crypto.iccode import *
 from i2cylib.utils.bytes.random_bytesgen import *
 
@@ -95,8 +95,8 @@ class SqliteDB:
 
     def create_table(self, table_object):
         self._connection_check()
-        if not isinstance(table_object, SqlTable):
-            raise TypeError("table_object must be an SqlTable object")
+        if not isinstance(table_object, NewSqlTable):
+            raise TypeError("table_object must be an NewSqlTable object")
         try:
             coder = Iccode(self.encrypt_key)
             cmd = {"type": "db",
