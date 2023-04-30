@@ -1,3 +1,27 @@
+<div align="center">
+  <img src="https://avatars.githubusercontent.com/u/22786478?v=4" width="180" height="180" alt="I2cyLogo">
+  <br>
+</div>
+
+<div align="center">
+
+# I2cylib: A Python Package Source
+### *4.30更新：database.sqlitedb模块支持魔法函数
+_✨ 纯Python实用工具集合 ✨_
+
+<p align="center">
+  <img src="https://img.shields.io/github/license/i2cy/i2cylib" alt="license">
+  <img src="https://img.shields.io/badge/python-3.7+-blue.svg" alt="Python">
+  <a href="https://pypi.python.org/pypi/i2cylib">
+      <img src="https://img.shields.io/pypi/dm/i2cylib" alt="pypi download">
+  </a>
+</p>
+</div>
+
+
+
+
+
 # 主要包含
  - `ICCode` i2cy常用的混淆算法
  - `Dynkey` 动态验证密匙生成/验证工具
