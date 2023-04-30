@@ -7,7 +7,7 @@
 ##VERSION: 1.2
 
 
-from typing import Any
+from typing import Any, Union
 import sqlite3
 
 
@@ -178,6 +178,32 @@ class SqlTable:
         self.offset += 1
         return ret
 
+    def __delitem__(self, key):
+        """
+        delete an item by using 'del' operator
+        :param key: Any
+        :return:
+        """
+        self.pop(key)
+
+    def __contains__(self, item) -> bool:
+        """
+        return weather if a table named as given exists
+        :param item: str
+        :return:
+        """
+        self.upper._connection_check()
+        cursor = self.upper.database.cursor()
+        p_id, p_name = self.get_primary_index_name()
+        key = self._data2sqlstr(item)
+
+        cursor.execute("SELECT EXISTS(SELECT {} from {} where {}={} limit 1);".format(p_name, self.name, p_name, key))
+
+        ret = cursor.fetchone()
+        ret = ret[0] > 0
+        cursor.close()
+        return ret
+
     def __getitem__(self, item) -> list:
         """
         get item(s) from current table
@@ -240,14 +266,7 @@ class SqlTable:
         if not isinstance(key, int):
             raise KeyError("index must be integrate")
 
-        primary_key = None
-        for index, ele in enumerate(self.table_info):
-            if ele["is_primary_key"]:
-                primary_key = ele["name"]
-                break
-        if primary_key is None:
-            raise KeyError("no primary key defined in table,"
-                           " invalid operation.")
+        pi, primary_key = self.get_primary_index_name()
 
         length = len(self)
         offset = key
@@ -269,13 +288,30 @@ class SqlTable:
 
         self.update(data=value, index_key=target)
 
+    def get_primary_index_name(self) -> (int, str):
+        """
+        return primary index column of current table
+        :return: (inr, str), index of primary key and string of primary key
+        """
+        primary_key = None
+        p_index = 0
+        for index, ele in enumerate(self.table_info):
+            if ele["is_primary_key"]:
+                primary_key = ele["name"]
+                p_index = ele['ID']
+                break
+        if primary_key is None:
+            raise KeyError("no primary key defined in table,"
+                           " invalid operation.")
+        return p_index, primary_key
+
     def seek(self, offset: int):
         """
         set current offset when iterate
         :param offset: int
         :return:
         """
-        cursor = self.upper.database.cursor()
+        self.cursor = self.upper.database.cursor()
         if offset < 0:
             offset = len(self) + offset
         self.offset = offset
@@ -288,6 +324,7 @@ class SqlTable:
         if self.upper.autocommit:
             raise Exception("cannot undo since the autocommit mode is on")
         self.length = None
+        self.upper.database.rollback()
 
     def _data2sqlstr(self, data):
         """
@@ -367,40 +404,40 @@ class SqlTable:
         """
         cursor = self.upper.database.cursor()
 
-        cmd = "DELETE FROM {}".format(self.name)
+        cmd = "DELETE FROM {};".format(self.name)
 
         cursor.execute(cmd)
         self.upper._auto_commit()
         cursor.close()
 
-    def pop(self, key, primary_index_column=None) -> list:
+    def pop(self, key: Union[int, bool, str, float], use_primary_index: bool = False,
+            primary_index_column=None) -> list:
         """
         remove line(s) of data from current table and return
-        :param key: Any(int, bool, str, float)
+        :param key: int or Any(int, bool, str, float)
+        :param use_primary_index: bool (optional, default=True), the indexer will use primary index column to select
+        data, otherwise it will use default index of lines starts from 0 which stands for the first line
         :param primary_index_column: str (optional), index_name can be automatically set as the primary key in table.
         Or you can define it as it follows the SQLite3 WHERE logic
         :return: list, list of item(s)
         """
         cursor = self.upper.database.cursor()
+        primary_column_number = -1
 
-        if primary_index_column is None:
-            primary_key = None
-            for ele in self.table_info:
-                if ele["is_primary_key"]:
-                    primary_key = ele["name"]
-                    break
-            if primary_key is None:
-                cursor.close()
-                raise KeyError("no primary key defined in table,"
-                               " input index_name manually")
-            primary_index_column = primary_key
+        if primary_index_column is None or use_primary_index:
+            primary_column_number, primary_index_column = self.get_primary_index_name()
 
-        key = self._data2sqlstr(key)
+        if use_primary_index:
+            ret = self.get(key=key, primary_index_column=primary_index_column)
+            key = self._data2sqlstr(key)
 
-        ret = self.get(key=key, primary_index_column=primary_index_column)
+        else:
+            ret = self[key]
+            key = ret[primary_column_number]
 
         cmd = "DELETE FROM {} WHERE {}={};".format(self.name,
                                                    primary_index_column, key)
+
         cursor.execute(cmd)
         self.upper._auto_commit()
         cursor.close()
@@ -568,6 +605,78 @@ class SqliteDB:
 
         self.cursors = []
 
+        self.__index = 0
+        self.__length = -1
+        self.__iter_table_list_cache = []
+
+    def __len__(self) -> int:
+        """
+        return counts of tables
+        :return:
+        """
+        self._connection_check()
+        if self.__length < 0:
+            self.__length = len(self.list_all_tables())
+        return self.__length
+
+    def __contains__(self, item):
+        """
+        return weather if a table named as given exists
+        :param item: str
+        :return:
+        """
+        self._connection_check()
+        cursor = self.database.cursor()
+
+        cursor.execute(
+            "SELECT EXISTS(SELECT name from sqlite_master where type='table' and name='{}' limit 1)".format(item))
+
+        ret = cursor.fetchone()
+        ret = ret[0] > 0
+        cursor.close()
+        return ret
+
+    def __getitem__(self, item: Union[str, int]) -> SqlTable:
+        """
+        return an SqlTable with specific name as key
+        :param item: str or int, table name or index of table
+        :return: SqlTable
+        """
+        self._connection_check()
+        if isinstance(item, int):
+            item = self.list_all_tables()[item]
+        return self.select_table(item)
+
+    def __delitem__(self, key: Union[str, int]):
+        """
+        drop a table from current database by calling 'del' operator
+        :param key: str or int, table name or index of table
+        :return:
+        """
+        self._connection_check()
+        if isinstance(key, int):
+            key = self.list_all_tables()[key]
+        self.drop_table(key)
+
+    def __iter__(self):
+        """
+        return an iterable object which is itself
+        :return: SqliteDB
+        """
+        self._connection_check()
+        self.__iter_table_list_cache = self.list_all_tables()
+        return self
+
+    def __next__(self) -> SqlTable:
+        """
+        return each table when iterate
+        :return: SqlTable
+        """
+        if self.offset >= len(self):
+            raise StopIteration
+        self.offset += 1
+        return self.select_table(self.__iter_table_list_cache[self.offset])
+
     def _connection_check(self):
         """
         check if the connection to database if valid, otherwise throw out an exception
@@ -599,6 +708,16 @@ class SqliteDB:
         if self.autocommit:
             self.database.commit()
 
+    def seek(self, offset: int):
+        """
+        set current offset when iterate
+        :param offset: int
+        :return:
+        """
+        if offset < 0:
+            offset = len(self) + offset
+        self.offset = offset
+
     def connect(self, database: str = None, timeout: int = 5):
         """
         Connect to a database, specify a database filename otherwise it will use the default value set by init
@@ -610,17 +729,23 @@ class SqliteDB:
             database = self.filename
 
         self.database = sqlite3.connect(database, timeout=timeout)
+        self.__iter_cursor = self.database.cursor()
 
-    def switch_autocommit(self) -> bool:
+    def switch_autocommit(self, enabled: bool = None) -> bool:
         """
         Switch auto-commit mode on or off. If auto commit is on, everything you do will commit to database
         immediately.
+        :param enabled: bool (optional), if unset, calling this method will toggle the autoswitch mode on and off,
+        if enabled is set, then mode will set to the value of enabled
         :return: bool, auto-commit current value of enabled
         """
-        if self.autocommit:
-            self.autocommit = False
+        if enabled is None:
+            if self.autocommit:
+                self.autocommit = False
+            else:
+                self.autocommit = True
         else:
-            self.autocommit = True
+            self.autocommit = enabled
 
         return self.autocommit
 
@@ -723,6 +848,7 @@ def test():
     t = SqliteDB("test.db")
     t.connect()
     tables = t.list_all_tables()
+    print("checking if table COMPANY exists: {}".format("COMPANY" in t))
     print("Tables in DB:\n{}".format(tables))
     if create:
         print("creating table COMPANY")
@@ -736,11 +862,15 @@ def test():
         tb.add_limit(2, Sqlimit.NOT_NULL)
         tb.add_limit(3, Sqlimit.NOT_NULL)
         t.create_table(tb)
+    print("checking if table COMPANY exists: {}".format("COMPANY" in t))
+    print("checking if table COMPANY_2 exists: {}".format("COMPANY_2" in t))
     print("selecting table COMPANY")
     tc = t.select_table("company")
     print("erasing all data in table")
     tc.empty()
     data = tc.get()
+    print("0. column info in COMPANY:\n{}".format(tc.get_table_info()))
+
     print("1. data in COMPANY:\n{}".format(data))
     print("appending data to table COMPANY")
     tc.append([1, "Icy", 0.03, True])
@@ -753,10 +883,28 @@ def test():
     print("committing changes")
     t.commit()
     print("2. data in COMPANY:\n{}".format(data))
+    print("checking if lines with ID 1 exists: {}".format(1 in tc))
+    print("checking if lines with ID 2 exists: {}".format(2 in tc))
+    print("checking if lines with ID 6 exists: {}".format(2 in tc))
+
+    print("deleting data line 1 from table COMPANY")
+    tc.pop(1)
+    print("checking if lines with ID 1 exists: {}".format(1 in tc))
+    print("checking if lines with ID 2 exists: {}".format(2 in tc))
+    print("checking if lines with ID 6 exists: {}".format(6 in tc))
+
     print("deleting data with ID 6 from table COMPANY")
-    tc.pop(6)
+    tc.pop(6, use_primary_index=True)
     data = tc.get()
+    print("checking if lines with ID 1 exists: {}".format(1 in tc))
+    print("checking if lines with ID 2 exists: {}".format(2 in tc))
+    print("checking if lines with ID 6 exists: {}".format(6 in tc))
+
     print("3. data in COMPANY:\n{}".format(data))
+    print("undo changes")
+    tc.undo()
+    data = tc.get()
+    print("4. data in COMPANY:\n{}".format(data))
     print("reconnecting database")
     t.close()
     t.connect()
@@ -764,21 +912,21 @@ def test():
     t.switch_autocommit()
     tc = t.select_table("company")
     print("deleting data with ID 4 from table COMPANY")
-    tc.pop(4)
+    tc.pop(4, use_primary_index=True)
     print("appending data to table COMPANY")
     tc.append([4, "RSauce", 0.66, True])
     data = tc.get()
-    print("4. data in COMPANY:\n{}".format(data))
+    print("5. data in COMPANY:\n{}".format(data))
     print("updating data in table COMPANY")
     tc.update(1 / random.randint(18, 30), 4, "index_1")
     data = tc.get()
-    print("5. data in COMPANY:\n{}".format(data))
+    print("6. data in COMPANY:\n{}".format(data))
     data = tc.get((1, 4))
-    print("6. data within ID between 1 and 4 in COMPANY:\n{}".format(data))
+    print("7. data within ID between 1 and 4 in COMPANY:\n{}".format(data))
     data = tc.get((3, 5))
-    print("7. data within ID between 3 and 5 in COMPANY:\n{}".format(data))
+    print("8. data within ID between 3 and 5 in COMPANY:\n{}".format(data))
     data = tc.get([1, 3, 5])
-    print("8. data within ID 1, 3, 5 in COMPANY:\n{}".format(data))
+    print("9. data within ID 1, 3, 5 in COMPANY:\n{}".format(data))
     print("table length: {}".format(len(tc)))
     print("iteration test:")
     for ele in tc:
@@ -809,6 +957,9 @@ def test():
     for i in range(len(tc)):
         tc[i] = (i, 'Cody', 1 / random.randint(18, 30), 1)
         print(tc[i])
+
+    t.close()
+    os.remove('test.db')
 
 
 if __name__ == '__main__':
