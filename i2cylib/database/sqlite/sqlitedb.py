@@ -534,13 +534,13 @@ class SqlTable:
 
     def update(self, data,
                index_key=None,
-               column_names: list = None,
+               column_names: Union[str, list] = None,
                primary_index_column: str = None):
         """
         update data with specified search values
         :param data: list(or tuple)
         :param index_key: int(or str), index
-        :param column_names: list, columns to be fetched
+        :param column_names: list(or str), column(s) to be fetched
         :param primary_index_column: str, the column to be indexed
         :return: None
         """
