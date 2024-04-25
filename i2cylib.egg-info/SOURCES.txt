@@ -49,6 +49,7 @@ i2cylib/science/plot/plot.py
 i2cylib/serial/__init__.py
 i2cylib/serial/HTprot/__init__.py
 i2cylib/serial/HTprot/htsocket.py
+i2cylib/serial/sbus/__init__.py
 i2cylib/serial/utils/__init__.py
 i2cylib/serial/utils/device_scanner.py
 i2cylib/utils/__init__.py
