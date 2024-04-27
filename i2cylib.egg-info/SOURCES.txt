@@ -31,6 +31,10 @@ i2cylib/engineering/pid.py
 i2cylib/filesystem/__init__.py
 i2cylib/filesystem/icfat64/__init__.py
 i2cylib/filesystem/icfat64/icfat.py
+i2cylib/hid/__init__.py
+i2cylib/hid/anotc/__init__.py
+i2cylib/hid/anotc/ofs.py
+i2cylib/hid/utils/__init__.py
 i2cylib/network/__init__.py
 i2cylib/network/I2Scan/__init__.py
 i2cylib/network/I2Scan/i2scan.py
