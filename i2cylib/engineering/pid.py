@@ -12,7 +12,7 @@ import threading
 
 class PID(object):
 
-    def __init__(self, kp=1, ki=0, kd=0, core_freq=50):
+    def __init__(self, kp: float = 1.0, ki: float = 0.0, kd: float = 0.0, core_freq: int = 50):
         """
         PID object
 
@@ -45,6 +45,8 @@ class PID(object):
         self.running = False
         self.thread_flags = {"thread_calculator": False}
         self.__out_t = 0
+
+        self.debug_coreCanNotKeepUp = False
 
     def set_deltaT(self, dt):
         self.dt = dt
@@ -101,15 +103,20 @@ class PID(object):
 
         self.thread_flags["thread_calculator"] = True
 
+        self.__core_time = self.dt
+
         while self.running:
             ts = time.time()
-            self.calc(self.dt + self.__time_offset)
-            t = self.dt - time.time() + ts + self.__time_offset
-
+            self.calc(self.__core_time)
             self.coreTask()
+
+            t = self.dt - time.time() + ts + self.__time_offset
 
             if t > 0:
                 time.sleep(t)
+            else:
+                self.debug_coreCanNotKeepUp = True
+
             self.__core_time = time.time() - ts
             self.__time_offset += 0.2 * (self.dt - self.__core_time)
 
@@ -158,15 +165,11 @@ class PID(object):
             ct = 0
         else:
             ct = 1 / self.__core_time
-        return {"current_freq": ct, "time_offset": self.__time_offset}
+        return {"core_loop_time_ms": 1000 * self.__core_time, "current_freq": ct, "time_offset": self.__time_offset}
 
 
 class IncPID(PID):
-
-    def __init__(self, kp=1, ki=0, kd=0, core_freq=50):
-        super(IncPID, self).__init__(kp=kp, ki=ki, kd=kd,
-                                     core_freq=core_freq)
-        self.prev_err_2 = 0
+    prev_err_2 = 0
 
     def calc(self, dt):
         self.err = self.expectation - self.measures + self.offset
@@ -283,31 +286,79 @@ def test(p=1.0, i=0.0, d=0.0,
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    x, exp, pos, out = test(p=22.7016, i=41.1049, d=0.01069892,
-                            test_mass=5.1,
-                            test_exp_model=[[1, 24],
-                                            # [2.5, 5],
-                                            # [5, 5],
-                                            # [7, 1],
-                                            # [9, 2],
-                                            ],
-                            test_time=1,
-                            dt=0.01,
-                            measure_delay=0.02,
-                            noise_k=0.1,
-                            gravity=10,
-                            gamma=0,
-                            incpid=False,
-                            start_hight=0)
 
+    class modPID(PID):
+        debug_coreTime = []
+        debug_coreOffset = []
+        debug_coreFreq = []
+        debug_x = []
+
+        def coreTask(self):
+            res = self.debug()
+            self.debug_x.append(time.time())
+            self.debug_coreFreq.append(res["current_freq"])
+            self.debug_coreTime.append(res["core_loop_time_ms"])
+            self.debug_coreOffset.append(1000 * res["time_offset"])
+
+
+    core_freq = 100
+    ctl = modPID(22.7016, 41.1049, 0.01, core_freq=core_freq)
+    ctl.measures = 0.01
+    ctl.expectation = 0.0
+    ctl.start()
+    time.sleep(2)
+    # ctl.measures = -0.01
+    # ctl.expectation = 0.0
+    # time.sleep(1)
+    # ctl.measures = 0.01
+    # ctl.expectation = 0.0
+    # time.sleep(2)
+    # ctl.measures = 0.0
+    # ctl.expectation = 0.0
+    # time.sleep(5)
+    print(ctl.debug())
+    print("Average core freq: {:.2f} Hz".format(len(ctl.debug_x) / (ctl.debug_x[-1] - ctl.debug_x[0])))
+    ctl.pause()
+    ctl.reset()
+
+    x = [ele - ctl.debug_x[0] for ele in ctl.debug_x]
     plt.subplot(211)
-    plt.plot(x, exp, color="red")
-    plt.plot(x, pos, color="blue")
+    plt.plot(x, ctl.debug_coreFreq, color="red")
+    plt.plot(x, [core_freq for i in range(len(x))], color="blue")
     plt.xlabel("t(s)")
-    plt.ylabel("Udc(V)")
+    plt.ylabel("Freq(Hz)")
     plt.grid()
     plt.legend("ep")
     plt.subplot(212)
-    plt.plot(x, out, color="green", alpha=0.6)
+    plt.plot(x, ctl.debug_coreOffset, color="green", alpha=0.6)
     plt.legend("o")
     plt.show()
+
+    # x, exp, pos, out = test(p=22.7016, i=41.1049, d=0.01069892,
+    #                         test_mass=5.1,
+    #                         test_exp_model=[[1, 24],
+    #                                         # [2.5, 5],
+    #                                         # [5, 5],
+    #                                         # [7, 1],
+    #                                         # [9, 2],
+    #                                         ],
+    #                         test_time=1,
+    #                         dt=0.01,
+    #                         measure_delay=0.02,
+    #                         noise_k=0.1,
+    #                         gravity=10,
+    #                         gamma=0,
+    #                         incpid=False,
+    #                         start_hight=0)
+    #
+    # plt.subplot(211)
+    # plt.plot(x, exp, color="red")
+    # plt.plot(x, pos, color="blue")
+    # plt.xlabel("t(s)")
+    # plt.ylabel("Udc(V)")
+    # plt.grid()
+    # plt.legend("ep")
+    # plt.subplot(212)
+    # plt.plot(x, out, color="green", alpha=0.6)
+    # plt.legend("o")
+    # plt.show()

@@ -5,6 +5,7 @@
 # Created on: 2021/3/6
 
 import setuptools
+from i2cylib import __VERSION__
 
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -12,7 +13,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
  
 setuptools.setup(
     name="i2cylib",
-    version="1.13.1",
+    version=__VERSION__,
     author="I2cy Cloud",
     author_email="i2cy@outlook.com",
     description="A Python library contains a lot of useful functions and tools",
@@ -34,7 +35,8 @@ setuptools.setup(
         'tqdm',
         'rsa',
         'pyserial',
-        'matplotlib'
+        'matplotlib',
+        'hidapi'
     ],
     packages=setuptools.find_packages(),
     python_requires=">=3.6",

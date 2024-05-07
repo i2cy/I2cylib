@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Author: i2cy(i2cy@outlook.com)
 # Project: I2cylib
@@ -10,12 +10,34 @@ from typing import Tuple
 from i2cylib.hid.utils import find_device
 import hid
 import struct
+import math
 
 VENDOR_ID = 0x0483
 PRODUCT_ID = 0xa022
 
+__K_DEGREE = 180 / math.pi
+
+
+def quaternion_to_euler_angles_math(quaternion, degrees=False):
+    """
+    Converts a quaternion to euler angles.
+    :param quaternion: list()
+    :param degrees: bool
+    :return:
+    """
+    x, y, z, w = quaternion
+    roll = math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))
+    pitch = math.asin(2 * (w * y - x * z))
+    yaw = math.atan2(2 * (w * z + x * y), 1 - 2 * (z * z + y * y))
+    if degrees:
+        roll *= __K_DEGREE
+        pitch *= __K_DEGREE
+        yaw *= __K_DEGREE
+    return roll, pitch, yaw
+
 
 class AnoOpticalFlowSensor(hid.device):
+    __TIMEOUT_SEC = 0.05
 
     def __init__(self, custom_addr=0xff, vendor_id=VENDOR_ID, product_id=PRODUCT_ID, wait_for_hotplug=True):
         """
@@ -49,8 +71,13 @@ class AnoOpticalFlowSensor(hid.device):
             y = 0.0
             quality = 0
 
+            last_update_ts = 0
+
         class Distance:
             dist = 0.0
+            height = 0.0
+
+            last_update_ts = 0
 
         class IMU:
             acc_x = 0.0
@@ -60,11 +87,24 @@ class AnoOpticalFlowSensor(hid.device):
             gyro_y = 0.0
             gyro_z = 0.0
 
+            last_update_ts = 0
+
         class Attitude:
-            v0 = 0
-            v1 = 0
-            v2 = 0
-            v3 = 0
+            v0 = 0.0
+            v1 = 0.0
+            v2 = 0.0
+            v3 = 1.0
+            roll = 0.0
+            pitch = 0.0
+            yaw = 0.0
+
+            last_update_ts = 0
+
+            def get_quaternion(self):
+                return [self.v1, self.v2, self.v3, self.v0]
+
+            def get_degrees_euler(self):
+                return [self.roll * (180 / math.pi), self.pitch * (180 / math.pi), self.yaw * (180 / math.pi)]
 
         self.ofs = OfsData()
         self.distance = Distance()
@@ -134,7 +174,7 @@ class AnoOpticalFlowSensor(hid.device):
             data = body[4:4 + d_len]
             check_sum = body[4 + d_len]
             data_ok = True
-            if header != 0xaa or sum(body[:-2]) == check_sum:
+            if header != 0xaa or sum(body[:-2]) & 0xff != check_sum:
                 data_ok = False
         except Exception:
             return False, 0, 0, b""
@@ -146,6 +186,7 @@ class AnoOpticalFlowSensor(hid.device):
         receive and update data from hid
         :return:
         """
+
         while self.running:
             data_ok, addr, func_id, data = self.__get_one_frame()
 
@@ -192,29 +233,49 @@ class AnoOpticalFlowSensor(hid.device):
                             self.ofs.quality_decoupled = 0
                         else:
                             self.ofs.quality = quality
+                        self.ofs.last_update_ts = time.time()  # update timestamp only when processed data received
 
                 # distance data
                 elif func_id == 0x34:
                     distance = struct.unpack("<i", data[3:])[0]
                     self.distance.dist = distance
 
+                    if time.time() - self.attitude.last_update_ts < self.__TIMEOUT_SEC:
+                        # decoupling height from distance
+                        pitch_tan = 0.5 * math.pi - self.attitude.pitch
+                        roll_tan = 0.5 * math.pi - self.attitude.roll
+                        if pitch_tan != 0:
+                            # preventing division by zero if pitch_tan == 0
+                            pitch_tan = 1 / math.tan(pitch_tan) ** 2
+                        if roll_tan != 0:
+                            # preventing division by zero if pitch_tan == 0
+                            roll_tan = 1 / math.tan(roll_tan) ** 2
+                        self.distance.height = distance * (1 / math.sqrt(1 + pitch_tan + roll_tan))
+                        self.distance.last_update_ts = time.time()  # update timestamp only height decoupled
+
                 # imu data
                 elif func_id == 0x01:
                     acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z = struct.unpack("<hhhhhh", data[:-1])
-                    self.ofs.acc_x = acc_x
-                    self.ofs.acc_y = acc_y
-                    self.ofs.acc_z = acc_z
-                    self.ofs.gyro_x = gyro_x
-                    self.ofs.gyro_y = gyro_y
-                    self.ofs.gyro_z = gyro_z
+                    self.imu.acc_x = acc_x
+                    self.imu.acc_y = acc_y
+                    self.imu.acc_z = acc_z
+                    self.imu.gyro_x = gyro_x
+                    self.imu.gyro_y = gyro_y
+                    self.imu.gyro_z = gyro_z
+                    self.imu.last_update_ts = time.time()
 
                 # attitude data
                 elif func_id == 0x04:
-                    v0, v1, v2, v3 = (struct.unpack("<hhhh", data[:-1]))
-                    self.attitude.v0 = v0
-                    self.attitude.v1 = v1
-                    self.attitude.v2 = v2
-                    self.attitude.v3 = v3
+                    v = struct.unpack("<hhhh", data[:-1])
+                    self.attitude.v0 = v[0] / 10000
+                    self.attitude.v1 = v[1] / 10000
+                    self.attitude.v2 = v[2] / 10000
+                    self.attitude.v3 = v[3] / 10000
+                    self.attitude.roll, self.attitude.pitch, self.attitude.yaw = quaternion_to_euler_angles_math(
+                        self.attitude.get_quaternion()
+                    )
+
+                    self.attitude.last_update_ts = time.time()
 
 
 if __name__ == '__main__':
@@ -222,11 +283,26 @@ if __name__ == '__main__':
 
     sensor = AnoOpticalFlowSensor()
     sensor.start()
+    first = True
+    time.sleep(0.5)
     try:
         while True:
-            print("\rheight: {}, dx: {}, dy: {}, x: {}, y: {}, quality: {}            ".format(
-                sensor.distance.dist, sensor.ofs.dx, sensor.ofs.dy, sensor.ofs.x, sensor.ofs.y, sensor.ofs.quality
+            if first:
+                first = False
+                t0 = time.time()
+                d = sensor.attitude.get_quaternion()
+                for i in range(1000000):
+                    roll, pitch, yaw = quaternion_to_euler_angles_math(d)
+                t1 = time.time() - t0
+                print("q to euler using lib:math time spent: {:.2f}us, roll: {:.1f}, pitch: {:.1f}, yaw: {:.1f}".format(
+                    t1, roll * (180 / math.pi), pitch * (180 / math.pi), yaw * (180 / math.pi)))
+
+            print("\rheight: {}, dx: {}, dy: {}, x: {}, y: {}, quality: {}, roll: {:.1f}, pitch: {:.1f}, yaw: {:.1f}"
+                  ", AccX: {}, AccY: {}, AccZ: {}, GyroX: {}, GyroY: {}, GyroZ: {}, height: {}cm".format(
+                sensor.distance.dist, sensor.ofs.dx, sensor.ofs.dy, sensor.ofs.x, sensor.ofs.y, sensor.ofs.quality,
+                *sensor.attitude.get_degrees_euler(), sensor.imu.acc_x, sensor.imu.acc_y, sensor.imu.acc_z,
+                sensor.imu.gyro_x, sensor.imu.gyro_y, sensor.imu.gyro_z, sensor.distance.height
             ), end="")
-            time.sleep(0.1)
+            time.sleep(0.5)
     except KeyboardInterrupt:
         sensor.kill()
