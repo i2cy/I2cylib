@@ -37,7 +37,7 @@ def quaternion_to_euler_angles_math(quaternion, degrees=False):
 
 
 class AnoOpticalFlowSensor(hid.device):
-    __TIMEOUT_SEC = 0.05
+    __TIMEOUT_SEC = 0.08
 
     def __init__(self, custom_addr=0xff, vendor_id=VENDOR_ID, product_id=PRODUCT_ID, wait_for_hotplug=True):
         """
@@ -69,6 +69,8 @@ class AnoOpticalFlowSensor(hid.device):
             dy_iFix = 0.0
             x = 0.0
             y = 0.0
+            x_ground = 0.0
+            y_ground = 0.0
             quality = 0
 
             last_update_ts = 0
@@ -76,6 +78,7 @@ class AnoOpticalFlowSensor(hid.device):
         class Distance:
             dist = 0.0
             height = 0.0
+            height_relative = 0.0
 
             last_update_ts = 0
 
@@ -97,6 +100,7 @@ class AnoOpticalFlowSensor(hid.device):
             roll = 0.0
             pitch = 0.0
             yaw = 0.0
+            offset_yaw = 0.0
 
             last_update_ts = 0
 
@@ -147,6 +151,21 @@ class AnoOpticalFlowSensor(hid.device):
         self.running = False
         [ele.join() for ele in self.__threads]
 
+    def reset_position_zero(self):
+        """
+        Reset the position zero on the device.
+        :return:
+        """
+        self.ofs.x_ground = 0.0
+        self.ofs.y_ground = 0.0
+
+    def reset_yaw_direction_zero(self):
+        """
+        Reset the yaw direction zero on the device.
+        :return:
+        """
+        self.attitude.offset_yaw = self.attitude.yaw
+
     def __get_one_frame(self) -> Tuple[bool, int, int, bytes]:
         """
         get one frame of data from hid
@@ -186,6 +205,10 @@ class AnoOpticalFlowSensor(hid.device):
         receive and update data from hid
         :return:
         """
+
+        last_x = 0.0
+        last_y = 0.0
+        real_acc_h_thresh = 20
 
         while self.running:
             data_ok, addr, func_id, data = self.__get_one_frame()
@@ -230,9 +253,27 @@ class AnoOpticalFlowSensor(hid.device):
                         self.ofs.y = integ_y
                         if not quality:
                             # set quality to 0 if sensor is not available
-                            self.ofs.quality_decoupled = 0
+                            self.ofs.quality = 0
                         else:
                             self.ofs.quality = quality
+                        if time.time() - self.ofs.last_update_ts < self.__TIMEOUT_SEC:
+                            dx = integ_x - last_x
+                            if dx < -32768:
+                                dx %= 65534
+                            elif dx > 32767:
+                                dx %= -65534
+                            dy = integ_y - last_y
+                            if dy < -32768:
+                                dy %= 65534
+                            elif dy > 32767:
+                                dy %= -65534
+                            yaw_angle = self.attitude.yaw - self.attitude.offset_yaw
+                            cos_k = math.cos(yaw_angle)
+                            sin_k = math.sin(yaw_angle)
+                            self.ofs.x_ground += dx * cos_k + -dy * sin_k
+                            self.ofs.y_ground += dx * sin_k + dy * cos_k
+                        last_x = self.ofs.x
+                        last_y = self.ofs.y
                         self.ofs.last_update_ts = time.time()  # update timestamp only when processed data received
 
                 # distance data
@@ -250,7 +291,14 @@ class AnoOpticalFlowSensor(hid.device):
                         if roll_tan != 0:
                             # preventing division by zero if pitch_tan == 0
                             roll_tan = 1 / math.tan(roll_tan) ** 2
+
+                        last_height = self.distance.height
                         self.distance.height = distance * (1 / math.sqrt(1 + pitch_tan + roll_tan))
+                        delta = self.distance.height - last_height
+                        if delta > real_acc_h_thresh or delta < -real_acc_h_thresh:
+                            delta = 0
+
+                        self.distance.height_relative += delta
                         self.distance.last_update_ts = time.time()  # update timestamp only height decoupled
 
                 # imu data
@@ -285,6 +333,7 @@ if __name__ == '__main__':
     sensor.start()
     first = True
     time.sleep(0.5)
+    sensor.reset_yaw_direction_zero()
     try:
         while True:
             if first:
@@ -297,12 +346,14 @@ if __name__ == '__main__':
                 print("q to euler using lib:math time spent: {:.2f}us, roll: {:.1f}, pitch: {:.1f}, yaw: {:.1f}".format(
                     t1, roll * (180 / math.pi), pitch * (180 / math.pi), yaw * (180 / math.pi)))
 
-            print("\rheight: {}, dx: {}, dy: {}, x: {}, y: {}, quality: {}, roll: {:.1f}, pitch: {:.1f}, yaw: {:.1f}"
-                  ", AccX: {}, AccY: {}, AccZ: {}, GyroX: {}, GyroY: {}, GyroZ: {}, height: {}cm".format(
-                sensor.distance.dist, sensor.ofs.dx, sensor.ofs.dy, sensor.ofs.x, sensor.ofs.y, sensor.ofs.quality,
-                *sensor.attitude.get_degrees_euler(), sensor.imu.acc_x, sensor.imu.acc_y, sensor.imu.acc_z,
-                sensor.imu.gyro_x, sensor.imu.gyro_y, sensor.imu.gyro_z, sensor.distance.height
+            print("\rheight: {}, dx: {}, dy: {}, x: {}, y: {}, x_ground: {:.1f}, y_ground:{:.1f}, quality: {}, roll:"
+                  " {:.1f}, pitch: {:.1f}, yaw: {:.1f}, AccX: {}, AccY: {}, AccZ: {}, GyroX: {}, GyroY: {}, GyroZ: {}, height: {:.1f}cm, "
+                  "height_relative: {:.1f}cm".format(
+                sensor.distance.dist, sensor.ofs.dx, sensor.ofs.dy, sensor.ofs.x, sensor.ofs.y, sensor.ofs.x_ground,
+                sensor.ofs.y_ground, sensor.ofs.quality, *sensor.attitude.get_degrees_euler(), sensor.imu.acc_x,
+                sensor.imu.acc_y, sensor.imu.acc_z, sensor.imu.gyro_x, sensor.imu.gyro_y, sensor.imu.gyro_z,
+                sensor.distance.height, sensor.distance.height_relative
             ), end="")
-            time.sleep(0.5)
+            time.sleep(0.2)
     except KeyboardInterrupt:
         sensor.kill()

@@ -300,7 +300,6 @@ class SBUS:
 
 
 if __name__ == '__main__':
-    pass
     # print("test on mode multiprocessing, RX only")
     # sbus = SBUS("/dev/ttyACM0", multiprocess=True, rx=True, tx=False)
     # sbus.start()
@@ -319,32 +318,34 @@ if __name__ == '__main__':
     # sbus.kill()
     # print("stopped")
 
-    # print("test on mode multithreading, proxying RX to TX")
-    # sbus_rx = SBUS("/dev/ttyACM0", multiprocess=False, rx=True, tx=False)
-    # sbus_tx = SBUS("/dev/ttyACM1", multiprocess=False, rx=False, tx=True)
-    # sbus_rx.register_callback(sbus_tx.update_channels_and_flag)
-    # sbus_rx.start()
-    # sbus_tx.start()
-    # for i in range(10):
-    #     rx = (sbus_rx.get_channels(), sbus_rx.get_flag())
-    #     print("sbus data: {}, flag: {}".format(*rx))
-    #     time.sleep(0.5)
-    # input("press ENTER to stop")
-    # sbus_tx.kill()
-    # sbus_rx.kill()
-    # print("stopped")
-    #
-    # print("test on mode multiprocess, proxying RX to TX")
-    # sbus_rx = SBUS("/dev/ttyACM0", multiprocess=True, rx=True, tx=False)
-    # sbus_tx = SBUS("/dev/ttyACM1", multiprocess=True, rx=False, tx=True)
-    # sbus_rx.register_callback(sbus_tx.update_channels_and_flag)
-    # sbus_rx.start()
-    # sbus_tx.start()
-    # for i in range(10):
-    #     rx = (sbus_rx.get_channels(), sbus_rx.get_flag())
-    #     print("sbus data: {}, flag: {}".format(*rx))
-    #     time.sleep(0.5)
-    # input("press ENTER to stop")
-    # sbus_tx.kill()
-    # sbus_rx.kill()
-    # print("stopped")
+    print("test on mode multithreading, proxying RX to TX")
+    sbus_rx = SBUS("/dev/ttyACM0", multiprocess=False, rx=True, tx=False)
+    sbus_tx = SBUS("/dev/ttyACM1", multiprocess=False, rx=False, tx=True)
+    sbus_rx.register_callback(sbus_tx.update_channels_and_flag)
+    sbus_rx.start()
+    sbus_tx.start()
+    for i in range(10):
+        rx = (sbus_rx.get_channels(), sbus_rx.get_flag())
+        print("sbus data: {}, flag: {}".format(*rx))
+        time.sleep(0.5)
+    input("press ENTER to stop")
+    sbus_tx.kill()
+    sbus_rx.kill()
+    print("stopped")
+
+    print("test on mode multiprocess, proxying RX to TX\n")
+    sbus_rx = SBUS("/dev/ttyACM0", multiprocess=True, rx=True, tx=False)
+    sbus_tx = SBUS("/dev/ttyACM1", multiprocess=True, rx=False, tx=True)
+    sbus_rx.register_callback(sbus_tx.update_channels_and_flag)
+    sbus_rx.start()
+    sbus_tx.start()
+    try:
+        while True:
+            rx = (sbus_rx.get_channels(), sbus_rx.get_flag())
+            print("\rsbus data: {}, flag: {}             ".format(*rx), end="")
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        pass
+    sbus_tx.kill()
+    sbus_rx.kill()
+    print("stopped")

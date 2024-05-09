@@ -6,7 +6,7 @@
 <div align="center">
 
 # I2cylib: A Python Package Source
-### *4.30更新：database.sqlitedb模块支持魔法函数
+### *5.9更新：hid.anotc Optical Flow Sensor全面支持
 _✨ 纯Python实用工具集合 ✨_
 
 <p align="center">
@@ -30,6 +30,7 @@ _✨ 纯Python实用工具集合 ✨_
  - `I2TCP` 高度封装的用户层通讯协议
  - `PID` 异步PID模组
  - `Serial` 封装的串口通讯模组
+ - `ANOTC` 封装的匿名光流传感器API
  - `utils` 各种常用的小工具
 
 # 安装方法
