@@ -6,8 +6,8 @@
 # Created on: 2021/9/19
 
 
-import time
 import threading
+import time
 
 
 class PID(object):
@@ -47,6 +47,7 @@ class PID(object):
         self.__out_t = 0
 
         self.debug_coreCanNotKeepUp = False
+        self.__callback_funcs = []
 
     def set_deltaT(self, dt):
         self.dt = dt
@@ -95,7 +96,28 @@ class PID(object):
         self.prev_err = self.measures
 
     def coreTask(self):
-        pass
+        """
+        override this function to add core task
+        :return:
+        """
+        [func(self) for func in self.__callback_funcs]
+
+    def register_callback(self, callback_func: callable):
+        """
+        Register callback function that will be called in the PID uodate thread
+        passing parameter: <PID this_pid_object>
+        :param callback_func: callables
+        :return:
+        """
+        self.__callback_funcs.append(callback_func)
+
+    def remove_callback(self, callback_func: callable):
+        """
+        remove callback function that should be called in the PID uodate thread
+        :param callback_func: callables
+        :return:
+        """
+        self.__callback_funcs.remove(callback_func)
 
     def __coreThread(self):
         if self.thread_flags["thread_calculator"]:

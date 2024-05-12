@@ -601,6 +601,8 @@ class IcFAT:  # ICFAT virtual filesystem API (Version: 0.0.1)
                     self.length = 0
                     self.clusters = [self.clusters[0]]
                     self.icfat_class._clear_fat_chain(self.clusters[0])
+                if "a" in mode and not self.dirctory:
+                    self.pointer = self.length
                 self._update_fat()
             except Exception as err:
                 raise Exception("failed to open file: " + str(err))
@@ -821,7 +823,7 @@ def icfat_test():
     print("\n■ creating a test.blk")
     blk = IcFAT("test.blk")
     print("\n■ making filesystem")
-    blk.makefs(2048, cluster_length=2048, description="测试虚拟盘")
+    blk.makefs(16384, cluster_length=32768, description="测试虚拟盘")
     print("\n■ listing details")
     data = blk.debug()
     for i in data:
@@ -898,6 +900,21 @@ def icfat_test():
     data = blk.debug()
     for i in data:
         print(i + ":\t" + str(data[i]))
+    f = blk.open("/test/first", "w")
+    f.write(b"this is the first line\n")
+    f.close()
+    f = blk.open("/test/first", "a")
+    f.write(b"this is the second line\n")
+    f.close()
+    f = blk.open("/test/first", "r")
+    print("content in first test file:\n{}".format(f.read().decode()))
+    f.close()
+    f = blk.open("/test/first", "w")
+    f.write(b"this is the first line\n")
+    f.close()
+    f = blk.open("/test/first", "r")
+    print("content in first test file:\n{}".format(f.read().decode()))
+    f.close()
     print("\n■ removing path /test")
     blk.remove("/test")
     print("\n■ listing root path")
