@@ -6,7 +6,7 @@
 <div align="center">
 
 # I2cylib: A Python Package Source
-### *5.9更新：hid.anotc Optical Flow Sensor全面支持
+### *5.13更新：添加DTerm滤波器至PID计算器
 _✨ 纯Python实用工具集合 ✨_
 
 <p align="center">

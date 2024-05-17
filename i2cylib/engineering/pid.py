@@ -9,10 +9,13 @@
 import time
 import threading
 
+DOUBLE_PI = 6.283185307179586476925286766559
+
 
 class PID(object):
 
-    def __init__(self, kp: float = 1.0, ki: float = 0.0, kd: float = 0.0, core_freq: int = 50):
+    def __init__(self, kp: float = 1.0, ki: float = 0.0, kd: float = 0.0, core_freq: int = 50,
+                 dterm_lpf_cutoff_hz: float = 20):
         """
         PID object
 
@@ -20,17 +23,17 @@ class PID(object):
         :param ki: float (default: 0), K_I
         :param kd: float (default: 0), K_D
         :param core_freq: int (>0, default: 50), set the expecting value of core frequency
+        :param dterm_lpf_cutoff_hz: float (default: 20), set the cutoff frequency of D-Term LPF
         """
         self.kp = kp
         self.ki = ki
         self.kd = kd
-        self.err = 0
-        self.measures = 0
-        self.expectation = 0
-        self.out = 0
-        self.offset = 0
-        self.prev_err = 0
-        self.integ = 0
+        self.err = 0.0
+        self.measures = 0.0
+        self.expectation = 0.0
+        self.out = 0.0
+        self.offset = 0.0
+        self.integ = 0.0
 
         self.death_area = 0
 
@@ -39,7 +42,7 @@ class PID(object):
         self.integ_limit = [0, 0]
 
         self.dt = 1 / core_freq
-        self.__core_time = 0
+        self.real_core_time = 0
         self.__time_offset = 0
 
         self.running = False
@@ -49,19 +52,76 @@ class PID(object):
         self.debug_coreCanNotKeepUp = False
         self.__callback_funcs = []
 
-    def set_deltaT(self, dt):
-        self.dt = dt
+        self.dterm_lpf_cutoff_hz = dterm_lpf_cutoff_hz
+        self.__dterm_lpf_k = 0.0
+        self.update_dterm_lpf()
 
-    def reset(self, kp=0, ki=0, kd=0):
-        self.out = 0
-        self.offset = 0
-        self.prev_err = 0
-        self.integ = 0
+        self.dterm_lpf_val = 0.0
+        self.dterm_prev_mea = 0.0
+
+    def update_dterm_lpf(self):
+        """
+        Update the D-Term LPF factor
+        :return:
+        """
+        b = DOUBLE_PI * self.dterm_lpf_cutoff_hz * self.dt
+        self.__dterm_lpf_k = b / (b + 1)
+
+    def set_dterm_lpf_cutoff_freq(self, dterm_lpf_cutoff: float):
+        """
+        Set the D-Term LPF cutoff frequency and update the D-Term LPF factor immediately
+        :param dterm_lpf_cutoff:
+        :return:
+        """
+        self.dterm_lpf_cutoff_hz = dterm_lpf_cutoff
+        self.update_dterm_lpf()
+
+    def set_deltaT(self, dt):
+        """
+        Set the system loop time
+        :param dt: float, seconds
+        :return:
+        """
+        self.dt = dt
+        self.update_dterm_lpf()
+
+    def reset(self, kp=None, ki=None, kd=None):
+        """
+        Reset the PID system
+        :param kp: float (default: None, means no changes), K_P
+        :param ki: float (default: None, means no changes), K_I
+        :param kd: float (default: None, means no changes), K_D
+        :return:
+        """
+        self.out = 0.0
+        self.offset = 0.0
+        self.dterm_prev_mea = 0.0
+        self.dterm_lpf_val = 0.0
+        self.integ = 0.0
+
+        if kp is not None:
+            self.kp = kp
+        if ki is not None:
+            self.ki = ki
+        if kd is not None:
+            self.kd = kd
 
     def reset_i(self):
+        """
+        Reset I value
+        :return:
+        """
         self.integ = 0
 
     def calc(self, dt):
+        """
+        Calculate the PID
+        :param dt:
+        :return:
+        """
+        if dt <= 0:
+            dt = 0.000001
+
         self.err = self.expectation - self.measures + self.offset
 
         if -self.death_area < self.err < self.death_area:
@@ -81,7 +141,9 @@ class PID(object):
             elif self.integ < self.integ_limit[0]:
                 self.integ = self.integ_limit[0]
 
-        deriv = (self.prev_err - self.measures) / dt
+        self.dterm_lpf_val += self.__dterm_lpf_k * (self.measures - self.dterm_lpf_val)
+        deriv = (self.dterm_prev_mea - self.dterm_lpf_val) / dt
+        self.dterm_prev_mea = self.dterm_lpf_val
 
         out = self.kp * self.err + self.ki * self.integ + self.kd * deriv
 
@@ -92,8 +154,6 @@ class PID(object):
                 out = self.out_limit[0]
 
         self.out = out
-
-        self.prev_err = self.measures
 
     def coreTask(self):
         """
@@ -124,11 +184,11 @@ class PID(object):
 
         self.thread_flags["thread_calculator"] = True
 
-        self.__core_time = self.dt
+        self.real_core_time = self.dt
 
         while self.running:
             ts = time.time()
-            self.calc(self.__core_time)
+            self.calc(self.real_core_time)
             self.coreTask()
 
             t = self.dt - time.time() + ts + self.__time_offset
@@ -138,8 +198,8 @@ class PID(object):
             else:
                 self.debug_coreCanNotKeepUp = True
 
-            self.__core_time = time.time() - ts
-            self.__time_offset += 0.2 * (self.dt - self.__core_time)
+            self.real_core_time = time.time() - ts
+            self.__time_offset += 0.2 * (self.dt - self.real_core_time)
 
         self.thread_flags["thread_calculator"] = False
 
@@ -182,11 +242,11 @@ class PID(object):
         self.expectation = expectation
 
     def debug(self):
-        if not self.__core_time:
+        if not self.real_core_time:
             ct = 0
         else:
-            ct = 1 / self.__core_time
-        return {"core_loop_time_ms": 1000 * self.__core_time, "current_freq": ct, "time_offset": self.__time_offset}
+            ct = 1 / self.real_core_time
+        return {"core_loop_time_ms": 1000 * self.real_core_time, "current_freq": ct, "time_offset": self.__time_offset}
 
 
 class IncPID(PID):
@@ -212,7 +272,7 @@ class IncPID(PID):
             elif self.integ < self.integ_limit[0]:
                 self.integ = self.integ_limit[0]
 
-        deriv = (self.err - 2 * self.prev_err + self.prev_err_2) / dt
+        deriv = (self.err - 2 * self.dterm_prev_mea + self.prev_err_2) / dt
 
         out = self.kp * self.err + self.ki * self.integ + self.kd * deriv
 
@@ -224,7 +284,7 @@ class IncPID(PID):
 
         self.out += out
 
-        self.prev_err_2 = self.prev_err
+        self.prev_err_2 = self.dterm_prev_mea
         self.prev_err = self.err
 
 
@@ -249,7 +309,7 @@ def test(p=1.0, i=0.0, d=0.0,
     if incpid:
         pid = IncPID()
     else:
-        pid = PID()
+        pid = PID(dterm_lpf_cutoff_hz=20)
     pid.kp = p
     pid.ki = i
     pid.kd = d
@@ -265,7 +325,7 @@ def test(p=1.0, i=0.0, d=0.0,
     speed_t = 0
 
     measures = [start_hight for ele in range(int(measure_delay / dt))]
-    pid.prev_err = measures[0]
+    pid.dterm_prev_mea = measures[0]
 
     out_prev_1 = 0
     out_prev_2 = 0
@@ -308,78 +368,78 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
 
-    class modPID(PID):
-        debug_coreTime = []
-        debug_coreOffset = []
-        debug_coreFreq = []
-        debug_x = []
-
-        def coreTask(self):
-            res = self.debug()
-            self.debug_x.append(time.time())
-            self.debug_coreFreq.append(res["current_freq"])
-            self.debug_coreTime.append(res["core_loop_time_ms"])
-            self.debug_coreOffset.append(1000 * res["time_offset"])
-
-
-    core_freq = 100
-    ctl = modPID(22.7016, 41.1049, 0.01, core_freq=core_freq)
-    ctl.measures = 0.01
-    ctl.expectation = 0.0
-    ctl.start()
-    time.sleep(2)
-    # ctl.measures = -0.01
-    # ctl.expectation = 0.0
-    # time.sleep(1)
+    # class modPID(PID):
+    #     debug_coreTime = []
+    #     debug_coreOffset = []
+    #     debug_coreFreq = []
+    #     debug_x = []
+    #
+    #     def coreTask(self):
+    #         res = self.debug()
+    #         self.debug_x.append(time.time())
+    #         self.debug_coreFreq.append(res["current_freq"])
+    #         self.debug_coreTime.append(res["core_loop_time_ms"])
+    #         self.debug_coreOffset.append(1000 * res["time_offset"])
+    #
+    #
+    # core_freq = 100
+    # ctl = modPID(22.7016, 41.1049, 0.01, core_freq=core_freq)
     # ctl.measures = 0.01
     # ctl.expectation = 0.0
+    # ctl.start()
     # time.sleep(2)
-    # ctl.measures = 0.0
-    # ctl.expectation = 0.0
-    # time.sleep(5)
-    print(ctl.debug())
-    print("Average core freq: {:.2f} Hz".format(len(ctl.debug_x) / (ctl.debug_x[-1] - ctl.debug_x[0])))
-    ctl.pause()
-    ctl.reset()
-
-    x = [ele - ctl.debug_x[0] for ele in ctl.debug_x]
-    plt.subplot(211)
-    plt.plot(x, ctl.debug_coreFreq, color="red")
-    plt.plot(x, [core_freq for i in range(len(x))], color="blue")
-    plt.xlabel("t(s)")
-    plt.ylabel("Freq(Hz)")
-    plt.grid()
-    plt.legend("ep")
-    plt.subplot(212)
-    plt.plot(x, ctl.debug_coreOffset, color="green", alpha=0.6)
-    plt.legend("o")
-    plt.show()
-
-    # x, exp, pos, out = test(p=22.7016, i=41.1049, d=0.01069892,
-    #                         test_mass=5.1,
-    #                         test_exp_model=[[1, 24],
-    #                                         # [2.5, 5],
-    #                                         # [5, 5],
-    #                                         # [7, 1],
-    #                                         # [9, 2],
-    #                                         ],
-    #                         test_time=1,
-    #                         dt=0.01,
-    #                         measure_delay=0.02,
-    #                         noise_k=0.1,
-    #                         gravity=10,
-    #                         gamma=0,
-    #                         incpid=False,
-    #                         start_hight=0)
+    # # ctl.measures = -0.01
+    # # ctl.expectation = 0.0
+    # # time.sleep(1)
+    # # ctl.measures = 0.01
+    # # ctl.expectation = 0.0
+    # # time.sleep(2)
+    # # ctl.measures = 0.0
+    # # ctl.expectation = 0.0
+    # # time.sleep(5)
+    # print(ctl.debug())
+    # print("Average core freq: {:.2f} Hz".format(len(ctl.debug_x) / (ctl.debug_x[-1] - ctl.debug_x[0])))
+    # ctl.pause()
+    # ctl.reset()
     #
+    # x = [ele - ctl.debug_x[0] for ele in ctl.debug_x]
     # plt.subplot(211)
-    # plt.plot(x, exp, color="red")
-    # plt.plot(x, pos, color="blue")
+    # plt.plot(x, ctl.debug_coreFreq, color="red")
+    # plt.plot(x, [core_freq for i in range(len(x))], color="blue")
     # plt.xlabel("t(s)")
-    # plt.ylabel("Udc(V)")
+    # plt.ylabel("Freq(Hz)")
     # plt.grid()
     # plt.legend("ep")
     # plt.subplot(212)
-    # plt.plot(x, out, color="green", alpha=0.6)
+    # plt.plot(x, ctl.debug_coreOffset, color="green", alpha=0.6)
     # plt.legend("o")
     # plt.show()
+
+    x, exp, pos, out = test(p=23.7016, i=24.1049, d=0.5,
+                            test_mass=5.1,
+                            test_exp_model=[[1, 24],
+                                            # [2.5, 5],
+                                            # [5, 5],
+                                            # [7, 1],
+                                            # [9, 2],
+                                            ],
+                            test_time=1,
+                            dt=0.01,
+                            measure_delay=0.04,
+                            noise_k=5.0,
+                            gravity=10,
+                            gamma=0,
+                            incpid=False,
+                            start_hight=0)
+
+    plt.subplot(211)
+    plt.plot(x, exp, color="red")
+    plt.plot(x, pos, color="blue")
+    plt.xlabel("t(s)")
+    plt.ylabel("Udc(V)")
+    plt.grid()
+    plt.legend("ep")
+    plt.subplot(212)
+    plt.plot(x, out, color="green", alpha=0.6)
+    plt.legend("o")
+    plt.show()

@@ -11,6 +11,7 @@ from i2cylib.hid.utils import find_device
 import hid
 import struct
 import math
+import time
 
 VENDOR_ID = 0x0483
 PRODUCT_ID = 0xa022
@@ -327,7 +328,6 @@ class AnoOpticalFlowSensor(hid.device):
 
 
 if __name__ == '__main__':
-    import time
 
     sensor = AnoOpticalFlowSensor()
     sensor.start()

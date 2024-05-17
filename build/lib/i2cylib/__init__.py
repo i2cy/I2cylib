@@ -13,6 +13,6 @@ from .engineering import *
 from .serial import *
 from .hid import *
 
-__VERSION__ = '1.13.6'
+__VERSION__ = '1.13.9'
 name = "i2cylib"
 description = "This is a universal package contains a lot of useful functions and tools written by I2cy."
