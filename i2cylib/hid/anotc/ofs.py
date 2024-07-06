@@ -103,6 +103,8 @@ class AnoOpticalFlowSensor(hid.device):
             yaw = 0.0
             offset_yaw = 0.0
 
+            cos_phi = 0.0
+
             last_update_ts = 0
 
             def get_quaternion(self):
@@ -271,7 +273,7 @@ class AnoOpticalFlowSensor(hid.device):
                             yaw_angle = self.attitude.yaw - self.attitude.offset_yaw
                             cos_k = math.cos(yaw_angle)
                             sin_k = math.sin(yaw_angle)
-                            self.ofs.x_ground += dx * cos_k + -dy * sin_k
+                            self.ofs.x_ground += dx * cos_k - dy * sin_k
                             self.ofs.y_ground += dx * sin_k + dy * cos_k
                         last_x = self.ofs.x
                         last_y = self.ofs.y
@@ -283,18 +285,8 @@ class AnoOpticalFlowSensor(hid.device):
                     self.distance.dist = distance
 
                     if time.time() - self.attitude.last_update_ts < self.__TIMEOUT_SEC:
-                        # decoupling height from distance
-                        pitch_tan = 0.5 * math.pi - self.attitude.pitch
-                        roll_tan = 0.5 * math.pi - self.attitude.roll
-                        if pitch_tan != 0:
-                            # preventing division by zero if pitch_tan == 0
-                            pitch_tan = 1 / math.tan(pitch_tan) ** 2
-                        if roll_tan != 0:
-                            # preventing division by zero if pitch_tan == 0
-                            roll_tan = 1 / math.tan(roll_tan) ** 2
-
                         last_height = self.distance.height
-                        self.distance.height = distance * (1 / math.sqrt(1 + pitch_tan + roll_tan))
+                        self.distance.height = distance * self.attitude.cos_phi
                         delta = self.distance.height - last_height
                         if delta > real_acc_h_thresh or delta < -real_acc_h_thresh:
                             delta = 0
@@ -323,6 +315,15 @@ class AnoOpticalFlowSensor(hid.device):
                     self.attitude.roll, self.attitude.pitch, self.attitude.yaw = quaternion_to_euler_angles_math(
                         self.attitude.get_quaternion()
                     )
+                    pitch_tan = 0.5 * math.pi - self.attitude.pitch
+                    roll_tan = 0.5 * math.pi - self.attitude.roll
+                    if pitch_tan != 0:
+                        # preventing division by zero if pitch_tan == 0
+                        pitch_tan = 1 / math.tan(pitch_tan) ** 2
+                    if roll_tan != 0:
+                        # preventing division by zero if pitch_tan == 0
+                        roll_tan = 1 / math.tan(roll_tan) ** 2
+                    self.attitude.cos_phi = 1 / math.sqrt(1 + pitch_tan + roll_tan)
 
                     self.attitude.last_update_ts = time.time()
 

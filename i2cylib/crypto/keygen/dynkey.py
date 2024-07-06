@@ -4,15 +4,25 @@
 # Name: time based dynamic key generator/matcher
 # Description: This function is used for socket package auth
 # Used Librarie(s): time, hashlib
-# Version: 1.0
 
 import time
 from hashlib import md5
+from typing import Any, Tuple
+
+__VERSION__ = 1.1
 
 
 class DynKey:  # 64-Bits dynamic key generator/matcher
 
-    def __init__(self, key, flush_times=1, multiplier=0.01):
+    def __init__(self, key, flush_times: int = 1, multiplier: float = 0.01,
+                 key_buff_max: int = 5):
+        """
+        64-Bits dynamic key generator/matcher
+        :param key: basic pre-shared key
+        :param flush_times: generator salts
+        :param multiplier: scale factor of timestamp, the
+        :param key_buff_max:
+        """
         if isinstance(key, str):
             key = key.encode()
         elif isinstance(key, bytes):
@@ -25,14 +35,44 @@ class DynKey:  # 64-Bits dynamic key generator/matcher
             flush_times = 1
         self.flush_time = flush_times
         self.__debug = False
+        self.__key_buff_max = key_buff_max
+        self.__key_buffer = []
 
     def switchDebug(self):
         self.__debug = not self.__debug
         return self.__debug
 
+    def __buffer_check(self):
+        """
+        this is a private function that meant to be limiting the key buffer length
+        :return:
+        """
+        if len(self.__key_buffer) > self.__key_buff_max:
+            self.__key_buffer.sort()
+            self.__key_buffer = self.__key_buffer[len(self.__key_buffer) - self.__key_buff_max:]
+
+    def __find_buffed(self, time_unit) -> bytes:
+        """
+        find and return cached key if time unit is cached
+        :return: key array in bytes
+        """
+        ret = b""
+        for tu, key in self.__key_buffer[::-1]:
+            if time_unit == tu:
+                ret = key
+                break
+        return ret
+
     def keygen(self, offset=0):  # 64-Bits dynamic key generator
-        time_unit = int(time.time() * self.multiplier) + int(offset)
-        time_unit = str(time_unit).encode()
+        time_unit_raw = int(time.time() * self.multiplier) + int(offset)
+
+        # search for the key that previously generated
+        key = self.__find_buffed(time_unit_raw)
+        if key != b"":
+            return key
+
+        # generate new if it doesn't exists
+        time_unit = str(time_unit_raw).encode()
         time_unit = md5(time_unit).digest()
         key_unit = md5(self.key).digest()
         sub_key_unit = time_unit + key_unit
@@ -73,13 +113,13 @@ class DynKey:  # 64-Bits dynamic key generator/matcher
             if self.__debug:
                 print("Conv2, iter {}: length {}".format(i, len(final_key)))
 
+        self.__key_buffer.append([time_unit_raw, final_key])
+        self.__buffer_check()
+
         return final_key
 
     def keymatch(self, key):  # Live key matcher
-        lock_1 = self.keygen(-1)
-        lock_2 = self.keygen(0)
-        lock_3 = self.keygen(1)
-        lock = [lock_1, lock_2, lock_3]
+        lock = [self.keygen(offset) for offset in range(-1, 2)]
         if key in lock:
             return True
         else:
@@ -89,4 +129,5 @@ class DynKey:  # 64-Bits dynamic key generator/matcher
 if __name__ == '__main__':
     kg = DynKey(b"testtest123")
     kg.switchDebug()
-    kg.keygen()
+    a = kg.keygen()
+    print("key match:", kg.keymatch(a))

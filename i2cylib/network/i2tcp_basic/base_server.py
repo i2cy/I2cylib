@@ -3,18 +3,19 @@
 # Author: i2cy(i2cy@outlook.com)
 # Filename: I2TCP_server
 # Created on: 2021/1/11
+
 import random
 import socket
 import threading
 import time
 import uuid
 from hashlib import md5, sha256
-from i2cylib.crypto.keygen import DynKey
+from i2cylib.crypto.keygen import DynKey, DynKey16
 from i2cylib.crypto.iccode import Iccode
 from i2cylib.utils.logger import Logger
 from i2cylib.utils.bytes import random_keygen
 
-VERSION = "1.4"
+VERSION = "1.5"
 
 
 class I2TCPserver:
@@ -33,6 +34,7 @@ class I2TCPserver:
         self.port = port
         self.srv = None
         self.keygen = DynKey(key)
+        self.keygen_preAuth = DynKey16(md5(key).digest())
         self.key = key
         self.max_con = max_con
 
@@ -230,7 +232,7 @@ class I2TCPserver:
 
 class I2TCPhandler:
 
-    def __init__(self, srv, addr, parent, timeout=20,
+    def __init__(self, srv, addr, parent, timeout=10,
                  buffer_max=256, watchdog_timeout=15, temp_dir="temp"):
         """
         I2TCP connection handler
@@ -247,6 +249,7 @@ class I2TCPhandler:
         self.addr = addr
         self.srv = srv
         self.keygen = parent.keygen
+        self.keygen_preAuth = parent.keygen_preAuth
         self.logger = parent.logger
         self.version = parent.version
         self.live = True
@@ -448,9 +451,26 @@ class I2TCPhandler:
         ret = False
 
         try:
+            # pre-auth
+            dynamic_key = b""
+            while len(dynamic_key) < 16:
+                dat = self.srv.recv(16 - len(dynamic_key))
+                if dat == b"":
+                    self.logger.DEBUG("{} pre-auth failed, connection lost".format(self.log_header))
+                    return False
+                dynamic_key += dat
+
+            if self.keygen_preAuth.keymatch(dynamic_key):
+                self.logger.DEBUG("{} pre-authorized".format(self.log_header))
+            else:
+                # self.logger.WARNING("{} unauthorized connection, key received: {}".format(self.log_header,
+                #                                                                           dynamic_key))
+                raise Exception("pre-auth failed, pre-auth key received: {}".format(dynamic_key))
+
+            # basic-auth
             rand_num = random_keygen(64)
             self.srv.sendall(rand_num)
-            self.logger.DEBUG("{} random seed sent".format(self.log_header))
+            self.logger.DEBUG("{} random seed sent, {}".format(self.log_header, rand_num))
 
             key_sha256 = sha256()
             key_sha256.update(self.parent.key)
@@ -688,7 +708,7 @@ def handler_test(con):
 
 
 def test():
-    srv = I2TCPserver(logger=Logger(filename="server_testrun.log"))
+    srv = I2TCPserver(logger=Logger(filename="server_testrun.log"), key=b"basic")
     srv.start()
     print("(Ctrl+C to exit)")
     try:

@@ -8,6 +8,7 @@
 
 import time
 import threading
+import warnings
 
 DOUBLE_PI = 6.283185307179586476925286766559
 
@@ -160,7 +161,11 @@ class PID(object):
         override this function to add core task
         :return:
         """
-        [func(self) for func in self.__callback_funcs]
+        for func in self.__callback_funcs:
+            try:
+                func(self)
+            except Exception as e:
+                warnings.warn("i2cylib.engineering.pid.coreTask callback failed: {}".format(e))
 
     def register_callback(self, callback_func: callable):
         """
@@ -289,9 +294,10 @@ class IncPID(PID):
 
 
 def test(p=1.0, i=0.0, d=0.0,
-         test_mass=4.0, gravity=10, noise_k=1, measure_delay=0.1,
+         test_mass=4.0, gravity=10, noise_k=1, noise_a=10.0, measure_delay=0.1,
          test_exp_model=None, test_time=5, dt=0.02,
-         start_hight=2, gamma=0.1, incpid=True):
+         start_hight=2, gamma=0.1, incpid=True, double_pid=False,
+         p0=1.0, i0=0.0, d0=0.0, lpf_1_cutoff_hz=20.0, lpf_on=True):
     """
     pid test run, test object moving in single axis, start in x=0, F=10*pid.out
 
@@ -306,29 +312,64 @@ def test(p=1.0, i=0.0, d=0.0,
     """
 
     import random
+    import numpy as np
+
     if incpid:
         pid = IncPID()
     else:
-        pid = PID(dterm_lpf_cutoff_hz=20)
+        pid = PID(dterm_lpf_cutoff_hz=3)
     pid.kp = p
     pid.ki = i
     pid.kd = d
 
+    pid_2 = PID(dterm_lpf_cutoff_hz=200000)
+    pid_2.kp = p0
+    pid_2.ki = i0
+    pid_2.kd = d0
+
     if test_exp_model is None:
         test_exp_model = [[0, 1]]
 
+    lpf_b = 2 * np.pi * lpf_1_cutoff_hz * dt
+    lpf_k = lpf_b / (1 + lpf_b)
+
     t = [0]
     exp = [0]
+    exp_spd = [0]
     object_pos = [start_hight]
+    obj_spd = [0]
     pid_out = [0]
+    pos_mea = [0]
 
     speed_t = 0
 
-    measures = [start_hight for ele in range(int(measure_delay / dt))]
-    pid.dterm_prev_mea = measures[0]
+    measures_pos = [start_hight for ele in range(int(measure_delay / dt))]
+    measures_speed = [start_hight for ele in range(int(measure_delay / dt))]
+    filtered_pos = [0]
+    pid.dterm_prev_mea = measures_pos[0]
 
     out_prev_1 = 0
     out_prev_2 = 0
+
+    # noise = np.random.normal(loc=0, size=int(test_time / dt + 10), scale=noise_k)
+    # print(noise)
+
+    if double_pid:
+        pid.out_limit = (0, 2)
+        pid_2.out_limit = (0, 100)
+    else:
+        pid.out_limit = (0, 100)
+
+    # 生成长度为N的白噪声信号
+    N = int(test_time / dt + 10)
+
+    # 生成长度为N的蓝噪声信号
+    alpha = noise_a
+    f = np.linspace(0, 1, N // 2)
+    P = f ** alpha
+    P = np.concatenate((P, P[-1::-1]))
+    X = np.fft.fft(np.random.normal(size=N, scale=5.0)) * np.sqrt(P)
+    noise = np.real(np.fft.ifft(X))
 
     while True:
         t.append(t[-1] + dt)
@@ -345,28 +386,65 @@ def test(p=1.0, i=0.0, d=0.0,
         exp_t = test_exp_model[step][1]
         exp.append(exp_t)
 
-        pid.expectation = exp_t
-        pid.measures = measures.pop(0)
-        measures.append(object_pos[-1] + noise_k * random.random())
+        if double_pid:
+            pid_2.expectation = exp_t
+            if lpf_on:
+                filtered_pos.append(filtered_pos[-1] + lpf_k * (measures_pos.pop(0) - filtered_pos[-1]))
+                pid_2.measures = filtered_pos[-1]
+            else:
+                pid_2.measures = measures_pos.pop(0)
+            pid_2.calc(dt)
+            pid.expectation = pid_2.out
+            exp_spd.append(pid_2.out)
+            pid.measures = measures_speed.pop(0)
+            obj_spd.append(pid.measures)
+        else:
+            pid.expectation = exp_t
+            if lpf_on:
+                filtered_pos.append(filtered_pos[-1] + lpf_k * (measures_pos.pop(0) - filtered_pos[-1]))
+                pid.measures = filtered_pos[-1]
+            else:
+                pid.measures = measures_pos.pop(0)
+
+        measures_pos.append(object_pos[-1] + noise_k * noise[len(t) - 1])
+        pos_mea.append(object_pos[-1] + noise_k * noise[len(t) - 1])
         pid.calc(dt)
 
-        pid_out.append(pid.out - out_prev_1)
+        pid_out.append(pid.out)
 
         out_prev_2 = pid.out - out_prev_1
 
-        # a = (10 * pid_out[-1] - gravity) / test_mass
-        # speed_t += a * dt * 0.9
-        speed_t = pid_out[-1] - gravity * test_mass
+        a = (pid_out[-1] - gravity) / test_mass
+        speed_t += a * dt * 0.9
+        measures_speed.append(speed_t)
+        # speed_t = pid_out[-1] - gravity * test_mass
         speed_t -= gamma * speed_t
         pos_t = object_pos[-1] + speed_t * dt
+        if pos_t < 0:
+            pos_t = 0
         object_pos.append(pos_t)
 
-    return t, exp, object_pos, pid_out
+    return t, exp, object_pos, pid_out, exp_spd, obj_spd, pos_mea, filtered_pos
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
+    from proplot import rc
+
+    rc["style"] = "default"
+    # 统一设置字体
+    rc["font.family"] = "Times New Roman"
+    # 统一设置轴刻度标签的字体大小
+    rc['tick.labelsize'] = 18
+    # 统一设置xy轴名称的字体大小
+    rc["axes.labelsize"] = 22
+    # 统一设置图例字体大小
+    rc["legend.fontsize"] = 18
+    # 统一设置轴刻度标签的字体粗细
+    rc["axes.labelweight"] = "light"
+    # 统一设置xy轴名称的字体粗细
+    rc["tick.labelweight"] = "bold"
 
     # class modPID(PID):
     #     debug_coreTime = []
@@ -415,31 +493,75 @@ if __name__ == '__main__':
     # plt.legend("o")
     # plt.show()
 
-    x, exp, pos, out = test(p=23.7016, i=24.1049, d=0.5,
-                            test_mass=5.1,
-                            test_exp_model=[[1, 24],
-                                            # [2.5, 5],
-                                            # [5, 5],
-                                            # [7, 1],
-                                            # [9, 2],
-                                            ],
-                            test_time=1,
-                            dt=0.01,
-                            measure_delay=0.04,
-                            noise_k=5.0,
-                            gravity=10,
-                            gamma=0,
-                            incpid=False,
-                            start_hight=0)
+    test_time = 10
+    dt = 0.005
 
-    plt.subplot(211)
-    plt.plot(x, exp, color="red")
-    plt.plot(x, pos, color="blue")
+    x, exp, pos, out, spd_exp, spd_mea, pos_mea, filtered = test(p=6.5, i=3.0, d=3.3,
+                                                                 test_mass=0.7,
+                                                                 test_exp_model=[[1, 5],
+                                                                                 # [2.5, 5],
+                                                                                 # [5, 5],
+                                                                                 # [7, 1],
+                                                                                 # [9, 2],
+                                                                                 ],
+                                                                 test_time=test_time,
+                                                                 dt=dt,
+                                                                 measure_delay=0.10,
+                                                                 noise_k=0,
+                                                                 noise_a=0.5,
+                                                                 gravity=10,
+                                                                 gamma=0,
+                                                                 incpid=False,
+                                                                 start_hight=0,
+                                                                 double_pid=True,
+                                                                 p0=6.0, i0=3.0, d0=0.5,
+                                                                 lpf_on=False, lpf_1_cutoff_hz=5)
+
+    # plt.subplot(211)
+    plt.plot(x, exp, color="red", label="expectation")
+    plt.plot(x, pos, color="blue", label="actual_height")
+    # plt.plot(x, filtered, color="green", alpha=1, label="measured_height")
     plt.xlabel("t(s)")
-    plt.ylabel("Udc(V)")
-    plt.grid()
-    plt.legend("ep")
-    plt.subplot(212)
-    plt.plot(x, out, color="green", alpha=0.6)
-    plt.legend("o")
+    plt.ylabel("Height(m)")
+    plt.xlim([-0.02, 10.5])
+    plt.ylim([0, 10])
+
+    plt.legend()
+    plt.grid(True, which="major")
+    plt.subplots_adjust(left=0.12, right=0.95, top=0.95, bottom=0.15)
     plt.show()
+
+    plt.plot(x, spd_exp, color='brown', label='speed_expectation')
+    plt.plot(x, spd_mea, color='blue', label='speed_measure')
+    plt.xlabel("t(s)")
+    plt.ylabel("Speed(m/s)")
+
+    plt.xlim([-0.02, 10.5])
+
+    plt.legend()
+    plt.grid(True, which="major")
+    plt.subplots_adjust(left=0.12, right=0.95, top=0.95, bottom=0.15)
+
+    plt.show()
+
+    # plt.psd(pos_mea, NFFT=int(test_time / dt), Fs=1 / dt, color='blue')
+    # # plt.title('Power Spectral Density')
+    # plt.ylabel('Power (dB/Hz)')
+    # plt.xlabel('Frequency (Hz)')
+    # plt.ylim([-73, 7])
+    # plt.xscale("log")
+    #
+    # plt.subplots_adjust(left=0.17, right=0.95, top=0.95, bottom=0.15)
+    #
+    # plt.show()
+
+    # plt.psd(filtered, NFFT=int(test_time / dt), Fs=1 / dt, color='blue')
+    # # plt.title('Power Spectral Density')
+    # plt.ylabel('Power (dB/Hz)')
+    # plt.xlabel('Frequency (Hz)')
+    # plt.ylim([-73, 7])
+    # plt.xscale("log")
+    #
+    # plt.subplots_adjust(left=0.17, right=0.95, top=0.95, bottom=0.15)
+    #
+    # plt.show()

@@ -10,11 +10,11 @@ import time
 import uuid
 import random
 from hashlib import md5, sha256
-from i2cylib.crypto.keygen import DynKey
+from i2cylib.crypto.keygen import DynKey, DynKey16
 from i2cylib.crypto.iccode import Iccode
 from i2cylib.utils.logger import Logger
 
-VERSION = "1.4"
+VERSION = "1.5"
 
 
 class I2TCPclient:
@@ -33,6 +33,7 @@ class I2TCPclient:
         self.address = (hostname, port)
         self.clt = None
         self.keygen = DynKey(key)
+        self.keygen_preAuth = DynKey16(md5(key).digest())
         self.key = key
         self.live = False
         self.log_header = "[I2TCP]"
@@ -238,12 +239,23 @@ class I2TCPclient:
             self.logger.ERROR("{} failed to connect to server, {}".format(self.log_header, err))
             return self.connected
         try:
+            pre_auth_key = self.keygen_preAuth.keygen()
+            clt.send(pre_auth_key)
+            self.logger.DEBUG("{} pre-auth dynkey sent: {}".format(
+                self.log_header, pre_auth_key
+            ))
+
             ts = time.time()
             rand_num = b""
             while len(rand_num) != 64:
                 rand_num += clt.recv(64 - len(rand_num))
                 if time.time() - ts > timeout:
                     raise Exception("timeout while receiving random data from server")
+
+            self.logger.DEBUG("{} 64-bit random key received: {}".format(
+                self.log_header,
+                rand_num
+            ))
 
             key_sha256 = sha256()
             key_sha256.update(self.key)
@@ -390,7 +402,9 @@ def test():
         clt.reset()
         clt = I2TCPclient("localhost", key=b"testtest123", logger=Logger(filename="client_testrun.log"))
         clt.connect()
-        time.sleep(2)
+        time.sleep(1)
+    if not clt.connect():
+        clt.reset()
         clt = I2TCPclient("localhost", key=b"basic", logger=Logger(filename="client_testrun.log"))
         clt.connect()
     gtc = ""

@@ -6,6 +6,7 @@
 # Created on: 2024/4/23
 
 import queue
+import warnings
 from ctypes import c_bool
 from multiprocessing import Process, Queue, Value
 import threading
@@ -246,7 +247,10 @@ class SBUS:
                 self.flag, self.channels = sbus_decode(self.__mp_rx.get(timeout=0.5))
                 # callbacks
                 for func in self.__callback_funcs:
-                    func(self.channels, self.flag)
+                    try:
+                        func(self.channels, self.flag)
+                    except Exception as e:
+                        warnings.warn("i2cylib.serial.sbus callback function failed when running, {}".format(e))
             except queue.Empty:
                 continue
 
@@ -284,7 +288,10 @@ class SBUS:
 
             # callbacks
             for func in self.__callback_funcs:
-                func(self.channels, self.flag)
+                try:
+                    func(self.channels, self.flag)
+                except Exception as e:
+                    warnings.warn("i2cylib.serial.sbus callback function failed when running, {}".format(e))
 
             if self.__tx.value:
                 # TX

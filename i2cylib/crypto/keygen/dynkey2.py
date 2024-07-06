@@ -15,7 +15,7 @@ class DynKey16:  # 16-Bytes dynamic key generator/matcher
     Added ARM support with more efficient hash algorithm
     """
 
-    def __init__(self, key, flush_times=1, divide=60):
+    def __init__(self, key, flush_times=1, divide=60, key_buff_max=5):
         if isinstance(key, str):
             key = key.encode()
         elif isinstance(key, bytes):
@@ -27,10 +27,40 @@ class DynKey16:  # 16-Bytes dynamic key generator/matcher
         if flush_times <= 0:
             flush_times = 1
         self.flush_time = flush_times
+        self.__key_buff_max = key_buff_max
+        self.__key_buffer = []
+
+    def __buffer_check(self):
+        """
+        this is a private function that meant to be limiting the key buffer length
+        :return:
+        """
+        if len(self.__key_buffer) > self.__key_buff_max:
+            self.__key_buffer.sort()
+            self.__key_buffer = self.__key_buffer[len(self.__key_buffer) - self.__key_buff_max:]
+
+    def __find_buffed(self, time_unit) -> bytes:
+        """
+        find and return cached key if time unit is cached
+        :return: key array in bytes
+        """
+        ret = b""
+        for tu, key in self.__key_buffer[::-1]:
+            if time_unit == tu:
+                ret = key
+                break
+        return ret
 
     def keygen(self, offset=0):  # 16-Bytes dynamic key generator
-        key_unit = md5(self.key).digest()
         timestamp = int(time.time() / self.divide) + int(offset)
+
+        # search for the key that previously generated
+        key = self.__find_buffed(timestamp)
+        if key != b"":
+            return key
+
+        # generate new if it doesn't exists
+        key_unit = md5(self.key).digest()
         sub_key_unit = list(md5(timestamp.to_bytes(4, "little", signed=False)).digest())
         sub_key_unit = list(md5(bytes(sub_key_unit) + key_unit).digest())
 
@@ -48,13 +78,14 @@ class DynKey16:  # 16-Bytes dynamic key generator/matcher
                 sub_key_unit[3 + i2] = int(conv_res_temp % 256)
             sub_key_unit = list(md5(bytes(sub_key_unit) + bytes(conv_core) + key_unit).digest())
 
-        return bytes(sub_key_unit)
+        ret = bytes(sub_key_unit)
+        self.__key_buffer.append([timestamp, ret])
+        self.__buffer_check()
+
+        return ret
 
     def keymatch(self, key):  # Live key matcher
-        lock_1 = self.keygen(-1)
-        lock_2 = self.keygen(0)
-        lock_3 = self.keygen(1)
-        lock = [lock_1, lock_2, lock_3]
+        lock = [self.keygen(offset) for offset in range(-1, 2)]
         if key in lock:
             return True
         else:

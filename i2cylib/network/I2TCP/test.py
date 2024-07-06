@@ -23,8 +23,8 @@ def massive_send(clt, data):
 if __name__ == '__main__':
     logger = Logger()
     srv = Server(port=24678, key=b"test", logger=logger, secured_connection=True)
-    clt = Client(port=24678, hostname="127.0.0.1", key=b"test", logger=logger)
-    ex_clt = Client(port=24678, hostname="127.0.0.1", key=b"asds", logger=logger)
+    clt = Client(port=24678, hostname="127.0.0.1", key=b"test", logger=logger, auto_reconnect=False)
+    ex_clt = Client(port=24678, hostname="127.0.0.1", key=b"asds", logger=logger, auto_reconnect=False)
 
     srv.start()
     ex_clt.connect()
