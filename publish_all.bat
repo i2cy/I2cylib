@@ -1,195 +1,100 @@
 @echo off
 chcp 65001 >nul
 :: ============================================================
-::   I2cylib - Publish All Platforms to PyPI
+::   I2cylib - Publish All Platforms to PyPI (Windows)
+::   Builds win_amd64 locally, SSHs to Linux to clone+compile,
+::   collects all wheels + sdist, uploads to PyPI.
 ::
-::   Automatically builds wheels on:
-::     - Windows amd64 (local)
-::     - Linux  amd64 (SSH to 10.0.2.208)
-::     - Linux  arm64 (SSH to 192.168.110.35)
-::
-::   Then uploads all wheels + sdist to PyPI.
-::
-::   Prerequisites:
-::     - SSH access to both Linux hosts (key-based auth)
-::     - MSVC installed on Windows
-::     - pybind11 installed locally
+::   Prerequisites: SSH key auth to Linux hosts, MSVC
 :: ============================================================
 
 set LINUX_AMD64=root@10.0.2.208
-set LINUX_ARM64=root@192.168.110.35
-set REMOTE_DIR=/tmp/i2cylib_build
+set LINUX_ARM64=root@192.168.110.21
+set REPO_URL=https://github.com/i2cy/I2cylib.git
+set REPO_TAG=master
 
 echo ============================================================
 echo   I2cylib - Publish All Platforms
-echo   Targets: win_amd64 + linux_x86_64 + linux_aarch64
 echo ============================================================
+
+:: [0] check SSH
+echo [0/6] Checking remote hosts...
+for %%H in (%LINUX_AMD64% %LINUX_ARM64%) do (
+    ssh -o ConnectTimeout=5 %%H "echo OK" 2>nul >nul && (
+        echo   [OK] %%H reachable
+    ) || (
+        echo   [WARN] %%H unreachable - will skip
+        if "%%H"=="%LINUX_AMD64%" set SKIP_AMD64=1
+        if "%%H"=="%LINUX_ARM64%" set SKIP_ARM64=1
+    )
+)
 echo.
 
-:: ============ [0] Check prerequisites ============
-echo [0/6] Checking prerequisites...
-
-echo   [SSH] Testing %LINUX_AMD64%...
-ssh -o ConnectTimeout=5 %LINUX_AMD64% "echo OK" 2>nul >nul
-if %ERRORLEVEL% NEQ 0 (
-    echo   [WARN] Cannot reach %LINUX_AMD64% - skipping
-    set SKIP_AMD64=1
-) else (
-    echo   [OK] %LINUX_AMD64% reachable
-    set SKIP_AMD64=0
-)
-
-echo   [SSH] Testing %LINUX_ARM64%...
-ssh -o ConnectTimeout=5 %LINUX_ARM64% "echo OK" 2>nul >nul
-if %ERRORLEVEL% NEQ 0 (
-    echo   [WARN] Cannot reach %LINUX_ARM64% - skipping
-    set SKIP_ARM64=1
-) else (
-    echo   [OK] %LINUX_ARM64% reachable
-    set SKIP_ARM64=0
-)
-
-echo.
+:: [1] build Windows wheel
 echo ============================================================
-echo   [1/6] Building Windows wheel (local)...
+echo   [1/6] Building Windows wheel...
 echo ============================================================
 call build_wheel.bat
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Windows build failed.
-    pause
-    exit /b 1
-)
-echo   [OK] Windows wheel built.
+if %ERRORLEVEL% NEQ 0 ( echo [ERROR] Windows build failed. & pause & exit /b 1 )
 
-:: ============ [2] Build Linux amd64 via SSH ============
+:: [2] build Linux amd64
 if "%SKIP_AMD64%"=="1" goto :skip_amd64
-echo.
 echo ============================================================
-echo   [2/6] Building Linux amd64 wheel (remote)...
+echo   [2/6] Building Linux amd64 wheel...
 echo ============================================================
-
-echo   Uploading source to %LINUX_AMD64%...
-ssh %LINUX_AMD64% "rm -rf %REMOTE_DIR% && mkdir -p %REMOTE_DIR%/i2cylib/filesystem/icfat64" 2>nul
-
-:: upload only essential files
-scp -q setup.py pyproject.toml %LINUX_AMD64%:%REMOTE_DIR%/
-scp -q i2cylib\__init__.py %LINUX_AMD64%:%REMOTE_DIR%/i2cylib/
-scp -q i2cylib\filesystem\__init__.py %LINUX_AMD64%:%REMOTE_DIR%/i2cylib/filesystem/
-scp -q i2cylib\filesystem\icfat64\__init__.py %LINUX_AMD64%:%REMOTE_DIR%/i2cylib/filesystem/icfat64/
-scp -q i2cylib\filesystem\icfat64\icfat.py %LINUX_AMD64%:%REMOTE_DIR%/i2cylib/filesystem/icfat64/
-scp -q i2cylib\filesystem\icfat64\icfat64.cpp %LINUX_AMD64%:%REMOTE_DIR%/i2cylib/filesystem/icfat64/
-scp -q build_wheel.sh %LINUX_AMD64%:%REMOTE_DIR%/
-echo   [OK] Uploaded.
-
-echo   Building wheel on %LINUX_AMD64%...
-ssh %LINUX_AMD64% "cd %REMOTE_DIR% && bash build_wheel.sh"
+scp -q build_wheel.sh %LINUX_AMD64%:/tmp/build_wheel.sh
+ssh %LINUX_AMD64% "REPO_URL=%REPO_URL% REPO_TAG=%REPO_TAG% bash /tmp/build_wheel.sh"
 if %ERRORLEVEL% NEQ 0 (
-    echo   [ERROR] Linux amd64 build failed.
+    echo   [WARN] amd64 build failed
 ) else (
-    echo   [OK] Build succeeded.
-
-    echo   Downloading wheel...
-    scp -q %LINUX_AMD64%:%REMOTE_DIR%/dist/*.whl dist\
-    if %ERRORLEVEL% NEQ 0 (
-        echo   [ERROR] Download failed.
-    ) else (
-        echo   [OK] Wheel downloaded.
-    )
+    echo   Downloading...
+    scp -q %LINUX_AMD64%:/tmp/i2cylib_wheel_build/dist/repaired/*.whl dist\
+    echo   [OK] amd64 wheel downloaded.
 )
-
-echo   Cleaning remote...
-ssh %LINUX_AMD64% "rm -rf %REMOTE_DIR%" 2>nul
+ssh %LINUX_AMD64% "rm -rf /tmp/i2cylib_wheel_build /tmp/build_wheel.sh" 2>nul
 :skip_amd64
 
-:: ============ [3] Build Linux arm64 via SSH ============
+:: [3] build Linux arm64
 if "%SKIP_ARM64%"=="1" goto :skip_arm64
-echo.
 echo ============================================================
-echo   [3/6] Building Linux arm64 wheel (remote)...
+echo   [3/6] Building Linux arm64 wheel...
 echo ============================================================
-
-echo   Uploading source to %LINUX_ARM64%...
-ssh %LINUX_ARM64% "rm -rf %REMOTE_DIR% && mkdir -p %REMOTE_DIR%/i2cylib/filesystem/icfat64" 2>nul
-
-scp -q setup.py pyproject.toml %LINUX_ARM64%:%REMOTE_DIR%/
-scp -q i2cylib\__init__.py %LINUX_ARM64%:%REMOTE_DIR%/i2cylib/
-scp -q i2cylib\filesystem\__init__.py %LINUX_ARM64%:%REMOTE_DIR%/i2cylib/filesystem/
-scp -q i2cylib\filesystem\icfat64\__init__.py %LINUX_ARM64%:%REMOTE_DIR%/i2cylib/filesystem/icfat64/
-scp -q i2cylib\filesystem\icfat64\icfat.py %LINUX_ARM64%:%REMOTE_DIR%/i2cylib/filesystem/icfat64/
-scp -q i2cylib\filesystem\icfat64\icfat64.cpp %LINUX_ARM64%:%REMOTE_DIR%/i2cylib/filesystem/icfat64/
-scp -q build_wheel.sh %LINUX_ARM64%:%REMOTE_DIR%/
-echo   [OK] Uploaded.
-
-echo   Building wheel on %LINUX_ARM64%...
-ssh %LINUX_ARM64% "cd %REMOTE_DIR% && bash build_wheel.sh"
+scp -q build_wheel.sh %LINUX_ARM64%:/tmp/build_wheel.sh
+ssh %LINUX_ARM64% "REPO_URL=%REPO_URL% REPO_TAG=%REPO_TAG% bash /tmp/build_wheel.sh"
 if %ERRORLEVEL% NEQ 0 (
-    echo   [ERROR] Linux arm64 build failed.
+    echo   [WARN] arm64 build failed
 ) else (
-    echo   [OK] Build succeeded.
-
-    echo   Downloading wheel...
-    scp -q %LINUX_ARM64%:%REMOTE_DIR%/dist/*.whl dist\
-    if %ERRORLEVEL% NEQ 0 (
-        echo   [ERROR] Download failed.
-    ) else (
-        echo   [OK] Wheel downloaded.
-    )
+    echo   Downloading...
+    scp -q %LINUX_ARM64%:/tmp/i2cylib_wheel_build/dist/repaired/*.whl dist\
+    echo   [OK] arm64 wheel downloaded.
 )
-
-echo   Cleaning remote...
-ssh %LINUX_ARM64% "rm -rf %REMOTE_DIR%" 2>nul
+ssh %LINUX_ARM64% "rm -rf /tmp/i2cylib_wheel_build /tmp/build_wheel.sh" 2>nul
 :skip_arm64
 
-:: ============ [4] Build sdist ============
-echo.
+:: [4] build sdist
 echo ============================================================
 echo   [4/6] Building sdist...
 echo ============================================================
-echo   (wheels already in dist/, building sdist only)
 python setup.py sdist
-if %ERRORLEVEL% NEQ 0 (
-    echo   [ERROR] sdist build failed.
-    pause
-    exit /b 1
-)
 echo   [OK] sdist built.
 
-:: ============ [5] Check all packages ============
-echo.
+:: [5] check
 echo ============================================================
 echo   [5/6] Checking all packages...
 echo ============================================================
 python -m twine check dist\*
-if %ERRORLEVEL% NEQ 0 (
-    echo   [WARN] Some packages have issues.
-)
 echo   [OK] Check complete.
 
-:: ============ [6] Upload ============
-echo.
+:: [6] upload
 echo ============================================================
-echo   [6/6] Packages ready:
-echo ============================================================
+echo   [6/6] Packages in dist/:
 dir /b dist\
 echo ============================================================
-echo   Platforms: win_amd64, linux_x86_64, linux_aarch64
-echo   + sdist (source, any platform)
-echo ============================================================
-echo.
-
 set /p UPLOAD="Upload ALL to PyPI? (y/N): "
 if /i "%UPLOAD%"=="y" (
-    echo.
-    echo   Uploading...
     python -m twine upload dist\*
-    if %ERRORLEVEL% EQU 0 (
-        echo   [OK] All packages uploaded to PyPI.
-    ) else (
-        echo   [ERROR] Upload failed.
-        pause
-        exit /b 1
-    )
+    if %ERRORLEVEL% EQU 0 ( echo [OK] Upload complete. ) else ( echo [ERROR] Upload failed. )
 ) else (
-    echo   [SKIP] Packages remain in dist\.
+    echo [SKIP] Packages remain in dist\.
 )
 echo ============================================================

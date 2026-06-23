@@ -16,7 +16,7 @@ set -e
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
-LINUX_ARM64="${LINUX_ARM64:-root@192.168.110.35}"
+LINUX_ARM64="${LINUX_ARM64:-root@192.168.110.21}"
 REMOTE_DIR=/tmp/i2cylib_build
 
 echo "============================================================"

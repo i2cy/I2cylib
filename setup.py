@@ -5,7 +5,12 @@
 # Created on: 2021/3/6
 
 import setuptools
-from i2cylib import __VERSION__
+import re
+
+# Read version without triggering full i2cylib import chain
+with open("i2cylib/__init__.py", "r", encoding="utf-8") as f:
+    _content = f.read()
+__VERSION__ = re.search(r"__VERSION__\s*=\s*['\"]([^'\"]+)['\"]", _content).group(1)
 
 try:
     from pybind11.setup_helpers import Pybind11Extension, build_ext
