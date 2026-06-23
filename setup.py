@@ -7,10 +7,29 @@
 import setuptools
 from i2cylib import __VERSION__
 
+try:
+    from pybind11.setup_helpers import Pybind11Extension, build_ext
+    HAS_PYBIND11 = True
+except ImportError:
+    HAS_PYBIND11 = False
+
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
- 
+
+ext_modules = []
+cmdclass = {}
+
+if HAS_PYBIND11:
+    ext_modules = [
+        Pybind11Extension(
+            "i2cylib.filesystem.icfat64._icfat64",
+            ["i2cylib/filesystem/icfat64/icfat64.cpp"],
+            cxx_std=17,
+        ),
+    ]
+    cmdclass = {"build_ext": build_ext}
+
 setuptools.setup(
     name="i2cylib",
     version=__VERSION__,
@@ -39,6 +58,8 @@ setuptools.setup(
         'hidapi'
     ],
     packages=setuptools.find_packages(),
+    ext_modules=ext_modules,
+    cmdclass=cmdclass,
     python_requires=">=3.6",
     entry_points={'console_scripts':
         [

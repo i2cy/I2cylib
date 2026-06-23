@@ -1,0 +1,48 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# C/C++ compiled extensions
+*.pyd
+*.so
+*.dylib
+*.dll
+*.obj
+*.o
+*.exp
+*.lib
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+test.blk
+*.blk
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribution
+*.tar.gz
+*.whl

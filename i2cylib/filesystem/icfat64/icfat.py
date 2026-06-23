@@ -50,15 +50,12 @@ class IcFAT:  # ICFAT virtual filesystem API (Version: 0.0.1)
         self.load()
         self.file.seek(64 + 6)
         res = None
-        data = None
-        for i in range(self.cluster_number - 1):
+        for i in range(self.cluster_number):
             data = self.file.read(6)
             if data == b"\x00\x00\x00\x00\x00\x00":
                 res = i + 1
                 break
-            else:
-                continue
-        if data is None:
+        if res is None:
             raise Exception("no free cluster left")
         return res
 

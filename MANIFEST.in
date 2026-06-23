@@ -1,0 +1,3 @@
+include README.md
+include LICENSE
+include i2cylib/filesystem/icfat64/*.cpp
